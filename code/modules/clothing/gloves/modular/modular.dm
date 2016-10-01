@@ -27,7 +27,7 @@
 		if(!module_holder)
 			user << "<span class='warning'>There doesn't seem to be anything to remove...</span>"
 			return
-		if(module_holder.detach_all())
+		if(module_holder.remove_all())
 			user << "<span class='notice'>You remove all removable modules from the gloves.</span>"
 		else
 			user << "<span class='warning'>There are no removable modules in these gloves.</span>"

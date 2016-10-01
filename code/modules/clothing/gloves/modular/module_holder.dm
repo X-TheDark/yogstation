@@ -14,7 +14,7 @@
 		module_limit += default_modules.len
 		for(var/type in default_modules)
 			var/obj/item/module/newmod = new type()
-			newmod.removable = default_removable
+			newmod.can_be_removed = default_removable
 			install(newmod)
 	//if we are given a cell to use (such as the case with anything that has it's own cell), we'll use that
 	if(power_source && power_source.loc == owner) //don't get any big ideas, you cheat
@@ -77,28 +77,28 @@
 
 	user.drop_item() //This is here because inventory code
 	module.forceMove(owner)
-	module.on_install(src)
+	module.on_install(src, owner)
 	installed_modules[module.id] = module
 	return 1
 
-/obj/module_holder/proc/detach(obj/item/module/module, force = 0)
+/obj/module_holder/proc/remove(obj/item/module/module, force = 0)
 	if(!module || !installed_modules || !owner)
 		return
 	if(!installed_modules[module.id])
 		return FALSE
-	if(module.removable == FALSE && !force)
+	if(!module.can_be_removed && !force)
 		return FALSE
 
-	module.on_remove(src)
+	module.on_remove(src, owner)
 	installed_modules -= module.id
 	module.forceMove(get_turf(owner))
 	return TRUE
 
-/obj/module_holder/proc/detach_all(force = 0)
+/obj/module_holder/proc/remove_all(force = 0)
 	. = FALSE
 	for(var/key in installed_modules)
 		var/obj/item/module/module_check = installed_modules[key]
-		if(detach(module_check, force))
+		if(remove(module_check, force))
 			. = TRUE
 	return .
 
@@ -123,9 +123,8 @@
 	Reason these are not just bullet_act/hit_reaction/etc is that if someone ever makes these buildable, I don't want anything
 	weird happening and I don't want modules to try to react to anything on their own.
 
-	Modules also have these exact proc hooks in them.
+	Modules also have these exact proc hooks in them, which this calls for ALL active modules
 */
-/obj/module_holder/proc/on_bullet_act(obj/item/projectile/P)
 /obj/module_holder/proc/on_hit_reaction(mob/living/carbon/human/owner, attack_text = "the attack", final_block_chance = 0, damage = 0, attack_type = MELEE_ATTACK, atom/movable/AT)
 
 //This verb is added to the owner item
@@ -166,7 +165,7 @@
 		dat += "<td>"
 		dat += "<div>"
 		dat += "<A href='?src=\ref[src];target=[module.id];action=\"toggle\"'>Toggle</A>"
-		if(module.removable)
+		if(module.can_be_removed)
 			dat += "<A href='?src=\ref[src];target=[module.id];action=\"eject\"'>Eject</A>"
 		dat += "</div>"
 		dat += "</td>"
@@ -187,5 +186,5 @@
 					module.toggle()
 					updateUsrDialog()
 				if("eject")
-					detach(module)
-					updateUsrDialog()
+					if(remove(module))
+						updateUsrDialog()
