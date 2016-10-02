@@ -5,13 +5,8 @@
 	item_state = "bgloves"
 	item_color = "brown"
 	burn_state = FIRE_PROOF
-
-	//Module stuff
-	var/obj/module_holder/module_holder
-
-/obj/item/clothing/gloves/modular/New()
-	..()
-	module_holder = new /obj/module_holder(src, null, "Gloves")
+	
+	module_holder_type = /obj/module_holder
 
 /obj/item/clothing/gloves/modular/attackby(obj/item/I, mob/user, params)
 	if(istype(I, /obj/item/module))

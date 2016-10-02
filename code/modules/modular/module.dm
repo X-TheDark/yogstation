@@ -6,6 +6,7 @@
 	var/can_be_applied = TRUE //Does this module apply anything to anything or is it something passive that isn't checked
 	var/can_be_toggled = TRUE
 	var/can_be_removed = TRUE
+	var/unique_resolution = TRUE //Only 1 module of this id can be applied on one action, processed here and in mob_procs.dm
 	var/list/mode_list //Does this module have any specific modes (See 'repulsor module' for an example)
 	var/mode //current mode (index of it, at least)
 	var/active = FALSE // on/off, only modules that are on will be considered for application
@@ -13,8 +14,8 @@
 	//Power cost when module is applied/active, the required format is as such : list("active" = 0, "passive" = 0)
 	var/list/power_cost
 	var/charges //do we have a limited amount of times we can activate? (Not exclusive with power_cost)
-	var/min_range = 1
-	var/max_range = 1
+	var/min_range = 1 //Don't affect ourselves if we click on us
+	var/max_range = 1 //Melee range by default
 	var/list/applicable_atoms //typecache of things we can be applied to
 	var/list/applicable_atom_types //which atom types (and subtypes) the module effects can be applied to. Will be applied to anything if not defined...please be careful with this
 	var/list/insertable_atom_types //what this can be inserted into. Requires definition, otherwise module cannot be inserted into anything (this is for safety, you'll have to be explicit in what equipment effects you are going to process in your code)
@@ -36,7 +37,7 @@
 		return FALSE
 	if(!active)
 		return FALSE
-	if(power_cost["active"] > 0 && (!holder.power_source || holder.power_source.charge < power_cost["active"]))
+	if((power_cost["active"] > 0 && !holder.power_source) || (holder.power_source.charge < power_cost["active"]))
 		return FALSE
 
 /obj/item/module/proc/can_be_applied(atom/target)

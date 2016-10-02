@@ -6,7 +6,7 @@
 	var/default_removable = TRUE //can the default modules be removed
 	var/obj/item/owner //which object is our owner
 
-/obj/module_holder/New(obj/item/owner, obj/item/weapon/stock_parts/cell/power_source, obj_name)
+/obj/module_holder/New(obj/item/owner, obj_name)
 	if(!owner)
 		return
 	src.owner = owner
@@ -16,9 +16,6 @@
 			var/obj/item/module/newmod = new type()
 			newmod.can_be_removed = default_removable
 			install(newmod)
-	//if we are given a cell to use (such as the case with anything that has it's own cell), we'll use that
-	if(power_source && power_source.loc == owner) //don't get any big ideas, you cheat
-		src.power_source = power_source
 	if(obj_name)
 		verbs -= /obj/module_holder/verb/modify_modules
 		verbs += new /obj/module_holder/verb/modify_modules(src, "Modify Modules([obj_name])")
@@ -39,7 +36,6 @@
 	. = list()
 	for(var/key in installed_modules)
 		. += installed_modules[key]
-	return .
 
 /obj/module_holder/proc/module_exists(id)
 	if(installed_modules && installed_modules[id])
@@ -59,7 +55,6 @@
 		var/obj/item/module/module = installed_modules[key]
 		if(module.active && module.can_be_applied(target))
 			. += module
-	return .
 
 /obj/module_holder/proc/install(obj/item/module/module, mob/user)
 	if(!istype(module) || !owner)
@@ -79,7 +74,7 @@
 	module.forceMove(owner)
 	module.on_install(src, owner)
 	installed_modules[module.id] = module
-	return 1
+	return TRUE
 
 /obj/module_holder/proc/remove(obj/item/module/module, force = 0)
 	if(!module || !installed_modules || !owner)
@@ -100,7 +95,6 @@
 		var/obj/item/module/module_check = installed_modules[key]
 		if(remove(module_check, force))
 			. = TRUE
-	return .
 
 /obj/module_holder/proc/apply_all_modules(atom/target, mob/user)
 	if(!target || !user)
@@ -124,8 +118,16 @@
 	weird happening and I don't want modules to try to react to anything on their own.
 
 	Modules also have these exact proc hooks in them, which this calls for ALL active modules
+	Hooks are:
+	- on_hit_reaction : hooks to hit_reaction for weapons/clothing in item_procs.dm
+	- on_RangedAttack : hooks to RangedAttack proc in code/_onclick/other_mobs.dm
+	- on_UnarmedAttack: hooks to UnarmedAttack proc in code/_onclick/other_mobs.dm
+	- on_afterattack  : hooks into afterattack proc in whatever obj/item/weapon it's done, ran only if attackby isn't resolved
 */
 /obj/module_holder/proc/on_hit_reaction(mob/living/carbon/human/owner, attack_text = "the attack", final_block_chance = 0, damage = 0, attack_type = MELEE_ATTACK, atom/movable/AT)
+/obj/module_holder/proc/on_RangedAttack(atom/A, mob/user, proximity)
+/obj/module_holder/proc/on_UnarmedAttack(atom/A, mob/user, proximity)
+/obj/module_holder/proc/on_afterattack(atom/target, mob/user, proximity_flag, click_parameters)
 
 //This verb is added to the owner item
 /obj/module_holder/verb/modify_modules()
