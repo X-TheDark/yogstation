@@ -21,9 +21,9 @@
 	// We attempt to resolve all modules that are installed in the characters equipment (no pockets/belts/backpacks)
 	// If the resolution returns something that evaluates to true, we stop
 	// So yeah, you can stack the same attack module that applies on proximity or something
-	// The m_resolve_UnarmedAttack is defined in code/modules/modular/mob_procs.dm
+	// The m_resolve_modules is defined in code/modules/modular/mob_procs.dm
 	if(proximity) //no stacking melee module effects with TK
-		if(m_resolve_UnarmedAttack(A, src, 1))
+		if(m_resolve_modules(A, 1, UNARMED_ATTACK))
 			return
 
 	var/override = 0
@@ -56,9 +56,8 @@
 		if(istype(G) && G.Touch(A,0)) // for magic gloves
 			return
 
-	// This time, we resolve the modules that are defined as ranged
-	// The m_resolve_RangedAttack is defined in code/modules/modular/mob_procs.dm
-	if(m_resolve_RangedAttack(A, src, 0))
+	// This time, we resolve the modules that are defined as ranged, reusing attack types to not much up defines
+	if(m_resolve_modules(A, 0, PROJECTILE_ATTACK))
 		return
 
 	for(var/datum/mutation/human/HM in dna.mutations)

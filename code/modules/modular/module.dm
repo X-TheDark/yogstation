@@ -94,6 +94,7 @@
 /obj/item/module/proc/switch_mode()
 	if(!mode_list || !mode_list.len > 1)
 		return
+	//used in this format so modes can be compared using mode_list[mode] == mode_list[1] or something
 	mode = (mode % mode_list.len) + 1
 	return TRUE
 

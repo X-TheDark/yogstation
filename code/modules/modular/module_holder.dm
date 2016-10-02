@@ -23,8 +23,8 @@
 
 /obj/module_holder/Destroy()
 	if(owner)
-		var/obj/module_holder/module_holder = locate() in owner.contents
-		if(module_holder == src)
+		var/obj/module_holder/module_holder = owner.module_holder
+		if(istype(module_holder))
 			owner.verbs -= verbs
 		owner = null
 
