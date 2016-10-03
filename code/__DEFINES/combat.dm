@@ -72,7 +72,8 @@
 #define PROJECTILE_ATTACK 3
 #define THROWN_PROJECTILE_ATTACK 4
 #define HULK_ATTACK 5
-
+//defined as part of attack types (for reuse purposes), but created for resolve_modules and associated stuff
+#define ON_HIT 6
 
 //Gun Stuff
  #define SAWN_INTACT  0

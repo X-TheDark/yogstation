@@ -1,17 +1,22 @@
-/obj/item/proc/m_resolve_UnarmedAttack(atom/A, mob/user, proximity)
+/obj/item/proc/get_m_holder()
 	if(!module_holder)
-		return FALSE
+		return
 	var/obj/module_holder/holder = module_holder
 	if(!istype(holder))
-		return FALSE
-	if(holder.on_UnarmedAttack(A, user, proximity))
+		return
+	return holder
+
+/obj/item/proc/unarmed_attack(atom/A, mob/user, proximity)
+	var/obj/module_holder/holder = get_m_holder()
+	if(holder && holder.on_unarmed_attack(A, user, proximity))
 		return 1
 
-/obj/item/proc/m_resolve_RangedAttack(atom/A, mob/user, proximity)
-	if(!module_holder)
-		return FALSE
-	var/obj/module_holder/holder = module_holder
-	if(!istype(holder))
-		return FALSE
-	if(holder.on_RangedAttack(A, user, proximity))
+/obj/item/proc/ranged_attack(atom/A, mob/user, proximity)
+	var/obj/module_holder/holder = get_m_holder()
+	if(holder && holder.on_ranged_attack(A, user, proximity))
+		return 1
+
+/obj/item/proc/melee_attack(atom/A, mob/user, proximity)
+	var/obj/module_holder/holder = get_m_holder()
+	if(holder && holder.on_melee_attack(A, user, proximity))
 		return 1

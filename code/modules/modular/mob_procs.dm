@@ -20,65 +20,69 @@
 	Everything is handled using the 'resolve_order' datum that controls the order in which items are resolved
 	This proc uses clothing slot defines from code/_DEFINES/clothing.dm to compare them to the datum's order list
 */
-/mob/living/carbon/human/proc/m_resolve_modules(atom/A, proximity, resolve_proc, datum/resolve_order/human/order_datum)
-	world << "WE HAVE m_resolve_modules INTERCEPTION!"
+/mob/proc/resolve_modules(atom/A, proximity, resolve_proc, datum/resolve_order/order)
+	return
 
-	if(!order_datum || !istype(order_datum))
-		order_datum = new /datum/resolve_order/human/default()
-	if(islist(order_datum))
-		order_datum = new(order_datum)
+/mob/living/carbon/human/resolve_modules(atom/A, proximity, resolve_proc, datum/resolve_order/order)
 
-	//if the module effects can't be stacked across more than 1 piece of clothing, item, we compare it to this
+	var/datum/resolve_order/resolve_order
+
+	if(!istype(order))
+		resolve_order = get_order_datum(resolve_proc)
+	else
+		resolve_order = order
+
+	if(islist(order))
+		resolve_order.Append(order)
+
+	if(!resolve_order || !resolve_order.order || !resolve_order.order.len)
+		return FALSE
+
+	//this will be used for uniquely resolving modules so we don't resolve more than one of those
 	var/list/resolved_module_ids
-	var/obj/item/clothing/item_to_resolve 
+	var/obj/item/item_to_resolve 
 
-	for(var/v in order_datum.order)
-		item_to_resolve = null
+	for(var/v in resolve_order.order)
+		item_to_resolve = get_item_by_slot(v)
 
-		switch(v)
-			if(slot_head)
-				if(head && isitem(head))
-					item_to_resolve = head
-			if(slot_wear_mask)
-				if(wear_mask && isitem(wear_mask))
-					item_to_resolve = wear_mask
-			if(slot_wear_suit)
-				if(wear_suit && isitem(wear_suit))
-					item_to_resolve = wear_suit
-			if(slot_w_uniform)
-				if(w_uniform && isitem(w_uniform))
-					item_to_resolve = w_uniform
-			if(slot_gloves)
-				if(gloves && isitem(gloves))
-					item_to_resolve = gloves
-			if(slot_shoes)
-				if(shoes && isitem(shoes))
-					item_to_resolve = shoes
-			if(slot_l_store)
-				if(l_store && isitem(l_store))
-					item_to_resolve = l_store
-			if(slot_r_store)
-				if(r_store && isitem(r_store))
-					item_to_resolve = r_store
-			if(slot_belt)
-				if(belt && isitem(belt))
-					item_to_resolve = belt
-			if(slot_back)
-				if(back && isitem(back))
-					item_to_resolve = back
-			if(slot_s_store)
-				if(s_store && isitem(s_store))
-					item_to_resolve = s_store
-			if(slot_wear_id)
-				if(wear_id && isitem(wear_id))
-					item_to_resolve = wear_id
-
-		if(item_to_resolve)
+		if(item_to_resolve && istype(item_to_resolve))
 			switch(resolve_proc)
 				if(UNARMED_ATTACK)
-					if(item_to_resolve.m_resolve_UnarmedAttack(A, src, proximity))
+					if(item_to_resolve.unarmed_attack(A, src, proximity))
 						return TRUE
 				if(PROJECTILE_ATTACK)
-					if(item_to_resolve.m_resolve_RangedAttack(A, src, proximity))
+					if(item_to_resolve.ranged_attack(A, src, proximity))
+						return TRUE
+				if(MELEE_ATTACK)
+					if(item_to_resolve.melee_attack(A, src, proximity))
 						return TRUE
 	return FALSE
+
+/*
+	Order datum helpers
+	get_order_datum() - returns the datum which describes which slots are allowed to be processed/added for that type of mob
+		attack_type is used to determine the default order of resolution, mobs/carbons don't use this by default
+*/
+/mob/proc/get_order_datum(attack_type)
+	var/datum/resolve_order/mob/order = new()
+	return order
+
+/mob/living/carbon/get_order_datum(attack_type)
+	var/datum/resolve_order/carbon/order = new()
+	return order
+
+/mob/living/carbon/human/get_order_datum(attack_type)
+	var/datum/resolve_order/human/order
+	if(attack_type)
+		switch(attack_type)
+			if(UNARMED_ATTACK, PROJECTILE_ATTACK) //resolve all default (see comment block at the top) equipment
+				order = new /datum/resolve_order/human/default()
+			if(MELEE_ATTACK) //only resolve the item we are attacking with
+				order = new()
+				if(hand)
+					order.Append(slot_l_hand)
+				else
+					order.Append(slot_r_hand)
+	else
+		order = new()
+	return order

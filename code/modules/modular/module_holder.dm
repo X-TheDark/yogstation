@@ -119,15 +119,15 @@
 
 	Modules also have these exact proc hooks in them, which this calls for ALL active modules
 	Hooks are:
-	- on_hit_reaction : hooks to hit_reaction for weapons/clothing in item_procs.dm
+	- on_Hit : hooks to hit_reaction for weapons/clothing in item_procs.dm
 	- on_RangedAttack : hooks to RangedAttack proc in code/_onclick/other_mobs.dm
 	- on_UnarmedAttack: hooks to UnarmedAttack proc in code/_onclick/other_mobs.dm
-	- on_afterattack  : hooks into afterattack proc in whatever obj/item/weapon it's done, ran only if attackby isn't resolved
+	- on_MeleeAttack  : hooks to mob ClickOn proc in code/_onclick/click.dm
 */
-/obj/module_holder/proc/on_hit_reaction(mob/living/carbon/human/owner, attack_text = "the attack", final_block_chance = 0, damage = 0, attack_type = MELEE_ATTACK, atom/movable/AT)
-/obj/module_holder/proc/on_RangedAttack(atom/A, mob/user, proximity)
-/obj/module_holder/proc/on_UnarmedAttack(atom/A, mob/user, proximity)
-/obj/module_holder/proc/on_afterattack(atom/target, mob/user, proximity_flag, click_parameters)
+/obj/module_holder/proc/on_hit(mob/living/carbon/human/owner, attack_text = "the attack", final_block_chance = 0, damage = 0, attack_type = MELEE_ATTACK, atom/movable/AT)
+/obj/module_holder/proc/on_ranged_attack(atom/A, mob/user, proximity)
+/obj/module_holder/proc/on_unarmed_attack(atom/A, mob/user, proximity)
+/obj/module_holder/proc/on_melee_attack(atom/A, mob/user, proximity)
 
 //This verb is added to the owner item
 /obj/module_holder/verb/modify_modules()
