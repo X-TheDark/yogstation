@@ -1,5 +1,7 @@
 /obj/module_holder
 	var/module_limit = 0
+	var/list/defense_modules
+	var/list/assault_modules
 	var/list/installed_modules
 	var/obj/item/weapon/stock_parts/cell/power_source
 	var/list/default_modules
@@ -9,24 +11,25 @@
 /obj/module_holder/New(obj/item/owner, obj_name)
 	if(!owner)
 		return
+	..()
 	src.owner = owner
-	if(default_modules)
+	if(default_modules && default_modules.len)
 		module_limit += default_modules.len
 		for(var/type in default_modules)
 			var/obj/item/module/newmod = new type()
 			newmod.can_be_removed = default_removable
 			install(newmod)
+	var/name_string = "Modify Modules"
 	if(obj_name)
-		verbs -= /obj/module_holder/verb/modify_modules
-		verbs += new /obj/module_holder/verb/modify_modules(src, "Modify Modules([obj_name])")
-	owner.verbs += verbs
+		name_string += "([obj_name])"
+	owner.verbs += new /obj/module_holder/verb/modify_modules(src, name_string)
 
 /obj/module_holder/Destroy()
 	if(owner)
-		var/obj/module_holder/module_holder = owner.module_holder
-		if(istype(module_holder))
-			owner.verbs -= verbs
+		owner.module_holder = null
+		owner.verbs -= /obj/module_holder/verb/modify_modules
 		owner = null
+	return ..()
 
 /obj/module_holder/proc/get_module(id)
 	if(installed_modules && installed_modules[id])
@@ -37,24 +40,12 @@
 	for(var/key in installed_modules)
 		. += installed_modules[key]
 
-/obj/module_holder/proc/module_exists(id)
-	if(installed_modules && installed_modules[id])
-		return TRUE
-	return FALSE
-
-/obj/module_holder/proc/is_active(id)
+/obj/module_holder/proc/has_active_module(id)
 	if(installed_modules && installed_modules[id])
 		var/obj/item/module/module = installed_modules[id]
 		if(module.active)
 			return TRUE
 	return FALSE
-
-/obj/module_holder/proc/get_applicable_modules(range, atom/target, mob/user)
-	. = list()
-	for(var/key in installed_modules)
-		var/obj/item/module/module = installed_modules[key]
-		if(module.active && module.can_be_applied(target))
-			. += module
 
 /obj/module_holder/proc/install(obj/item/module/module, mob/user)
 	if(!istype(module) || !owner)
@@ -68,21 +59,51 @@
 	if(!module.insertable_atoms || !module.insertable_atoms.len)
 		return "Tell the coders that insertable_atoms is not defined for this module."
 	for(!is_type_in_typecache(owner, module.insertable_atoms))
-		return "[owner] does not support this type of module."	
+		return "[owner] does not support this type of module."
+
+	if(module.module_type & MODULE_DEFENSE)
+		if(!defense_modules)
+			defense_modules = list(global = list(), local = list())
+		var/list/def_mod_list
+		switch(module.onhit_type)
+			if(ONHIT_LOCAL)
+				def_mod_list = defense_modules["local"]
+				def_mod_list["module.id"] = module
+			if(ONHIT_GLOBAL)
+				def_mod_list = defense_modules["global"]
+				def_mod_list["module.id"] = module
+
+	if(module.module_type & MODULE_ASSAULT)
+		if(!assault_modules)
+			assault_modules = list()
+		assault_modules[module.id] = module
 
 	user.drop_item() //This is here because inventory code
 	module.forceMove(owner)
-	module.on_install(src, owner)
 	installed_modules[module.id] = module
+	module.on_install(src, owner)
 	return TRUE
 
 /obj/module_holder/proc/remove(obj/item/module/module, force = 0)
-	if(!module || !installed_modules || !owner)
+	if(!module || (!installed_modules || !installed_modules.len) || !owner)
 		return
 	if(!installed_modules[module.id])
 		return FALSE
 	if(!module.can_be_removed && !force)
 		return FALSE
+
+	if(module.module_type & MODULE_DEFENSE)
+		var/list/def_mod_list
+		switch(module.onhit_type)
+			if(ONHIT_LOCAL)
+				def_mod_list = defense_modules["local"]
+				def_mod_list -= module.id
+			if(ONHIT_GLOBAL)
+				def_mod_list = defense_modules["global"]
+				def_mod_list -= module.id
+
+	if(module.module_type & MODULE_ASSAULT)
+		assault_modules -= module.id
 
 	module.on_remove(src, owner)
 	installed_modules -= module.id
@@ -96,45 +117,48 @@
 		if(remove(module_check, force))
 			. = TRUE
 
-/obj/module_holder/proc/apply_all_modules(atom/target, mob/user)
-	if(!target || !user)
-		return
-
-	for(var/m in get_applicable_modules(target, user))
-		var/obj/item/module/module = m
-		module.apply(target, user)
-
-/obj/module_holder/proc/apply_module(id, atom/target, mob/user)
-	if(!id || !installed_modules[id] || !target || !user)
-		return
-
-	var/obj/item/module/module = installed_modules[id]
-
-	if(module.can_be_applied(target))
-		return module.apply(target, user)
 
 /*
+    BEWARE OF THE HOOKS
+
 	Reason these are not just bullet_act/hit_reaction/etc is that if someone ever makes these buildable, I don't want anything
 	weird happening and I don't want modules to try to react to anything on their own.
 
-	Modules also have these exact proc hooks in them, which this calls for ALL active modules
-	Hooks are:
-	- on_Hit : hooks to hit_reaction for weapons/clothing in item_procs.dm
-	- on_RangedAttack : hooks to RangedAttack proc in code/_onclick/other_mobs.dm
-	- on_UnarmedAttack: hooks to UnarmedAttack proc in code/_onclick/other_mobs.dm
-	- on_MeleeAttack  : hooks to mob ClickOn proc in code/_onclick/click.dm
+	Modules also have these exact proc hooks in them, which these call for ALL active modules
+	Hooks are (hook via resolve_modules proc):
+	- hooks into UnarmedAttack proc in code/_onclick/other_mobs.dm
+	- hooks into RangedAttack proc in code/_onclick/other_mobs.dm
+	- hooks into mob ClickOn proc in code/_onclick/click.dm
 */
-/obj/module_holder/proc/on_hit(mob/living/carbon/human/owner, attack_text = "the attack", final_block_chance = 0, damage = 0, attack_type = MELEE_ATTACK, atom/movable/AT)
-/obj/module_holder/proc/on_ranged_attack(atom/A, mob/user, proximity)
-/obj/module_holder/proc/on_unarmed_attack(atom/A, mob/user, proximity)
-/obj/module_holder/proc/on_melee_attack(atom/A, mob/user, proximity)
+/obj/module_holder/proc/resolve_assault_modules(atom/A, mob/user, resolve_proc)
+	var/resolved = FALSE //we will resolve all modules on the item before stopping
+
+	for(var/v in assault_modules)
+		var/obj/item/module/module = v
+
+		switch(resolve_proc)
+			if(UNARMED_MELEE_CLICK)
+				resolved = module.on_unarmed_attack(A, user)
+			if(UNARMED_RANGE_CLICK)
+				resolved = module.on_ranged_attack(A, user)
+			if(ARMED_MELEE_CLICK)
+				resolved = module.on_obj_melee_attack(A, user)
+			if(ARMED_RANGE_CLICK)
+				resolved = module.on_obj_ranged_attack(A, user)
+		
+		if(resolved)
+			. = TRUE
 
 //This verb is added to the owner item
 /obj/module_holder/verb/modify_modules()
 	set name = "Modify Modules"
 	set category = "Modules"
 
-	var/obj/module_holder/module_holder = locate() in contents //we are actually inside of owner item now
+	//we are inside of the owner item, but obviously, neither compiler nor runtime can resolve this
+	var/obj/item/current_holder = src 
+
+	var/obj/module_holder/module_holder = current_holder.get_m_holder()
+
 	if(!module_holder)
 		usr << "<span class='notice'>This is an error : Please notify coders that the verb didn't find the module holder, despite you being able to use it!</span>"
 		return

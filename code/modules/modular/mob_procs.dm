@@ -20,11 +20,14 @@
 	Everything is handled using the 'resolve_order' datum that controls the order in which items are resolved
 	This proc uses clothing slot defines from code/_DEFINES/clothing.dm to compare them to the datum's order list
 */
-/mob/proc/resolve_modules(atom/A, proximity, resolve_proc, datum/resolve_order/order)
-	return
+/mob/proc/resolve_assault_modules(atom/A, resolve_proc, datum/resolve_order/order)
 
-/mob/living/carbon/human/resolve_modules(atom/A, proximity, resolve_proc, datum/resolve_order/order)
+/mob/proc/has_active_module(id, slot)
 
+/mob/proc/resolve_defense_modules()
+
+
+/mob/living/carbon/human/resolve_assault_modules(atom/A, resolve_proc, datum/resolve_order/order)
 	var/datum/resolve_order/resolve_order
 
 	if(!istype(order))
@@ -38,25 +41,47 @@
 	if(!resolve_order || !resolve_order.order || !resolve_order.order.len)
 		return FALSE
 
-	//this will be used for uniquely resolving modules so we don't resolve more than one of those
-	var/list/resolved_module_ids
 	var/obj/item/item_to_resolve 
+	var/resolved = FALSE
 
 	for(var/v in resolve_order.order)
 		item_to_resolve = get_item_by_slot(v)
 
 		if(item_to_resolve && istype(item_to_resolve))
 			switch(resolve_proc)
-				if(UNARMED_ATTACK)
-					if(item_to_resolve.unarmed_attack(A, src, proximity))
-						return TRUE
-				if(PROJECTILE_ATTACK)
-					if(item_to_resolve.ranged_attack(A, src, proximity))
-						return TRUE
-				if(MELEE_ATTACK)
-					if(item_to_resolve.melee_attack(A, src, proximity))
-						return TRUE
+				if(UNARMED_MELEE_CLICK, UNARMED_RANGE_CLICK, ARMED_MELEE_CLICK, ARMED_RANGE_CLICK)
+					if(item_to_resolve.resolve_assault_modules(A, src, resolve_proc))
+						resolved = TRUE
+
+	if(resolved)
+		changeNext_move(CLICK_CD_MELEE)
+
+	return resolved
+
+/mob/living/carbon/human/has_active_module(id, slot)
+	if(!id)
+		return
+
+	if(islist(slot))
+		for(var/v in slot)
+			var/obj/item/to_check = get_item_by_slot(slot)
+			if(to_check)
+				if(to_check.has_active_module(id))
+					return TRUE
+	else if(slot)
+		var/obj/item/to_check = get_item_by_slot(slot)
+		if(to_check)
+			if(to_check.has_active_module(id))
+				return TRUE
+	else
+		var/obj/item/to_check
+		for(var/obj/item/v in contents) //I hope to god this is good enough and I don't have to manually go though slots
+			to_check = v
+			if(to_check.has_active_module(id))
+				return TRUE
 	return FALSE
+
+/mob/living/carbon/human/resolve_defense_modules()
 
 /*
 	Order datum helpers
@@ -75,14 +100,14 @@
 	var/datum/resolve_order/human/order
 	if(attack_type)
 		switch(attack_type)
-			if(UNARMED_ATTACK, PROJECTILE_ATTACK) //resolve all default (see comment block at the top) equipment
+			if(UNARMED_MELEE_CLICK, UNARMED_RANGE_CLICK) //resolve all default (see comment block at the top) equipment
 				order = new /datum/resolve_order/human/default()
-			if(MELEE_ATTACK) //only resolve the item we are attacking with
+			if(ARMED_MELEE_CLICK, ARMED_RANGE_CLICK) //only resolve the item in hand
 				order = new()
 				if(hand)
 					order.Append(slot_l_hand)
 				else
-					order.Append(slot_r_hand)
+					order.Append(slot_r_hand)	
 	else
 		order = new()
 	return order

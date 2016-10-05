@@ -122,7 +122,7 @@
 	if(!isturf(A) && A == loc || (A in contents) || (A.loc in contents) || (A.loc && (A.loc.loc in contents)))
 		// No adjacency needed
 		if(W)
-			var/resolved = resolve_modules(A, 1, MELEE_ATTACK)
+			var/resolved = resolve_assault_modules(A, ARMED_MELEE_CLICK)
 			if(!resolved && A && W)
 				resolved = A.attackby(W,src)
 			if(!resolved && A && W)
@@ -140,7 +140,7 @@
 	if(isturf(A) || isturf(A.loc) || (A.loc && isturf(A.loc.loc)))
 		if(A.Adjacent(src)) // see adjacent.dm
 			if(W)
-				var/resolved = resolve_modules(A, 1, MELEE_ATTACK)
+				var/resolved = resolve_assault_modules(A, ARMED_MELEE_CLICK)
 				if(!resolved && A && W)
 					resolved = A.attackby(W,src,params)
 				if(!resolved && A && W)
@@ -152,7 +152,9 @@
 			return
 		else // non-adjacent click
 			if(W)
-				W.afterattack(A,src,0,params) // 0: not Adjacent
+				var/resolved = resolve_assault_modules(A, ARMED_RANGE_CLICK)
+				if(!resolved && A && W)
+					W.afterattack(A,src,0,params) // 0: not Adjacent
 			else
 				RangedAttack(A, params)
 

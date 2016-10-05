@@ -6,17 +6,21 @@
 		return
 	return holder
 
-/obj/item/proc/unarmed_attack(atom/A, mob/user, proximity)
+/obj/item/proc/has_active_module(id)
 	var/obj/module_holder/holder = get_m_holder()
-	if(holder && holder.on_unarmed_attack(A, user, proximity))
-		return 1
+	if(holder && holder.has_active_module(id))
+		return TRUE
+	return FALSE
 
-/obj/item/proc/ranged_attack(atom/A, mob/user, proximity)
+//Called by resolve_modules when we click on someone adjacent without any item in hand
+/obj/item/proc/resolve_assault_modules(atom/A, mob/user, resolve_proc)
+	if(!resolve_proc)
+		return
 	var/obj/module_holder/holder = get_m_holder()
-	if(holder && holder.on_ranged_attack(A, user, proximity))
-		return 1
+	if(!holder)
+		return
 
-/obj/item/proc/melee_attack(atom/A, mob/user, proximity)
-	var/obj/module_holder/holder = get_m_holder()
-	if(holder && holder.on_melee_attack(A, user, proximity))
-		return 1
+	switch(resolve_proc)
+		if(UNARMED_MELEE_CLICK, UNARMED_RANGE_CLICK, ARMED_MELEE_CLICK, ARMED_RANGE_CLICK)
+			if(holder.resolve_assault_modules(A, user, resolve_proc))
+				return 1
