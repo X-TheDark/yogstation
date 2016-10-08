@@ -6,7 +6,6 @@
 //Same as above but with item in hand
 #define ARMED_MELEE_CLICK 3
 #define ARMED_RANGE_CLICK 4
-#define ON_HIT 5
 
 //Module on_hit type
 #define ONHIT_LOCAL 1

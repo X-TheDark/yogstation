@@ -43,7 +43,13 @@
 
 /obj/item/module/proc/on_obj_ranged_attack(atom/A, mob/user)
 
-/obj/item/module/proc/on_hit()
+/obj/item/module/proc/on_bullet_act(obj/item/projectile/I, mob/user, mob/victim)
+
+/obj/item/module/proc/on_attacked_by(obj/item/I, mob/user, mob/victim)
+
+/obj/item/module/proc/on_attack_hand(mob/user, mob/victim)
+
+/obj/item/module/proc/on_hitby(atom/movable/AM, mob/user, mob/victim)
 
 /obj/item/module/proc/can_be_applied(atom/target, mob/user)
 	if(!target || !holder || !user)

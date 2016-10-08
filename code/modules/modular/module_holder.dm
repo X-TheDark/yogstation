@@ -63,15 +63,15 @@
 
 	if(module.module_type & MODULE_DEFENSE)
 		if(!defense_modules)
-			defense_modules = list(global = list(), local = list())
+			defense_modules = list("global" = list(), "local" = list())
 		var/list/def_mod_list
 		switch(module.onhit_type)
 			if(ONHIT_LOCAL)
 				def_mod_list = defense_modules["local"]
-				def_mod_list["module.id"] = module
+				def_mod_list[module.id] = module
 			if(ONHIT_GLOBAL)
 				def_mod_list = defense_modules["global"]
-				def_mod_list["module.id"] = module
+				def_mod_list[module.id] = module
 
 	if(module.module_type & MODULE_ASSAULT)
 		if(!assault_modules)
@@ -131,10 +131,13 @@
 	- hooks into mob ClickOn proc in code/_onclick/click.dm
 */
 /obj/module_holder/proc/resolve_assault_modules(atom/A, mob/user, resolve_proc)
+	if(!assault_modules || !assault_modules.len)
+		return
+
 	var/resolved = FALSE //we will resolve all modules on the item before stopping
 
-	for(var/v in assault_modules)
-		var/obj/item/module/module = v
+	for(var/key in assault_modules)
+		var/obj/item/module/module = assault_modules[key]
 
 		switch(resolve_proc)
 			if(UNARMED_MELEE_CLICK)
@@ -147,6 +150,60 @@
 				resolved = module.on_obj_ranged_attack(A, user)
 		
 		if(resolved)
+			. = TRUE
+
+/obj/module_holder/proc/resolve_defense_modules(atom/I, mob/user, mob/victim, attack_type, which = ONHIT_LOCAL)
+	if(!defense_modules)
+		return
+
+	var/list/def_mod_list
+	
+	switch(which)
+		if(ONHIT_LOCAL)
+			def_mod_list = defense_modules["local"]
+		if(ONHIT_GLOBAL)
+			def_mod_list = defense_modules["global"]
+
+	if(!def_mod_list || !def_mod_list.len)
+		return FALSE
+
+	switch(attack_type)
+		if(MELEE_ATTACK)
+			. = resolve_melee_defense(I, user, victim, def_mod_list)
+		if(UNARMED_ATTACK)
+			. = resolve_unarmed_defense(user, victim, def_mod_list)
+		if(PROJECTILE_ATTACK)
+			. = resolve_projectile_defense(I, null, victim, def_mod_list)
+		if(THROWN_PROJECTILE_ATTACK)
+			. = resolve_thrown_defense(I, null, victim, def_mod_list)
+
+/obj/module_holder/proc/resolve_projectile_defense(obj/item/projectile/I, mob/user, mob/victim, list/mod_list)
+	if(istype(I))
+		user = I.firer
+	for(var/key in mod_list)
+		var/obj/item/module/module = mod_list[key]
+		if(module.on_bullet_act(I, user, victim))
+			. = TRUE
+
+/obj/module_holder/proc/resolve_melee_defense(obj/item/I, mob/user, mob/victim, list/mod_list)
+	for(var/key in mod_list)
+		var/obj/item/module/module = mod_list[key]
+		if(module.on_attacked_by(I, user, victim))
+			. = TRUE
+
+/obj/module_holder/proc/resolve_unarmed_defense(mob/user, mob/victim, list/mod_list)
+	for(var/key in mod_list)
+		var/obj/item/module/module = mod_list[key]
+		if(module.on_attack_hand(user, victim))
+			. = TRUE
+
+/obj/module_holder/proc/resolve_thrown_defense(atom/movable/AM, mob/user, mob/victim, list/mod_list)
+	if(isobj(AM))
+		var/obj/item/thing = AM
+		user = thing.thrownby
+	for(var/key in mod_list)
+		var/obj/item/module/module = mod_list[key]
+		if(module.on_hitby(AM, user, victim))
 			. = TRUE
 
 //This verb is added to the owner item

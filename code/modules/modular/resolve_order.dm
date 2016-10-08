@@ -18,16 +18,50 @@
 	allowed = list(slot_head, slot_wear_mask, slot_back, slot_r_hand, slot_l_hand)
 
 /datum/resolve_order/New(list/order)
-	Append(order)
+	append(order)
 
-/datum/resolve_order/proc/Append(list/order)
+/datum/resolve_order/proc/append(list/order)
+	if(!src.order)
+		src.order = list()
 	if(!islist(order))
-		if(order in allowed && (!(order in src.order) || allow_repeat_slots))
+		if((order in allowed) && (!(order in src.order) || allow_repeat_slots))
 			src.order += order
 	else
 		for(var/v in order)
-			if(v in allowed && (!(v in src.order) || allow_repeat_slots))
+			if((v in allowed) && (!(v in src.order) || allow_repeat_slots))
 				src.order += v
 
-/datum/resolve_order/human/default
-	order = list(slot_head, slot_wear_mask, slot_wear_suit, slot_w_uniform, slot_gloves)
+/datum/resolve_order/human/attack/default
+	order = list(slot_head, slot_wear_suit, slot_w_uniform, slot_gloves)
+
+//Try to resolve the currently held item first
+/datum/resolve_order/proc/append_hands(active_hand)
+	if(active_hand)
+		append(slot_l_hand)
+		append(slot_r_hand)
+	else
+		append(slot_r_hand)
+		append(slot_l_hand)
+
+//Try to resolve the currently held item first...again
+/datum/resolve_order/human/defense/New(active_hand)
+	if(active_hand)
+		append(slot_l_hand)
+		append(slot_r_hand)
+	else
+		append(slot_r_hand)
+		append(slot_l_hand)
+
+/datum/resolve_order/human/defense/head/New(active_hand)
+	..()
+	append(slot_head)
+
+/datum/resolve_order/human/defense/body/New(active_hand)
+	..()
+	append(slot_wear_suit)
+	append(slot_w_uniform)
+
+/datum/resolve_order/human/defense/legs/New(active_hand)
+	..()
+	append(slot_wear_suit)
+	append(slot_w_uniform)
