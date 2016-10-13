@@ -1575,6 +1575,8 @@
 #include "code\modules\modular\module_holder.dm"
 #include "code\modules\modular\resolve_order.dm"
 #include "code\modules\modular\items\modular_gloves.dm"
+#include "code\modules\modular\modules\gravmanip.dm"
+#include "code\modules\modular\modules\powerglove.dm"
 #include "code\modules\ninja\__ninjaDefines.dm"
 #include "code\modules\ninja\admin_ninja_verbs.dm"
 #include "code\modules\ninja\energy_katana.dm"

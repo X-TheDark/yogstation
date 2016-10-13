@@ -226,30 +226,49 @@
 		usr << "<span class='warning'>There are no modules to modify.</span>"
 		return
 
-	var/dat = module_holder.get_content()
+	module_holder.make_topic()
+
+/obj/module_holder/proc/make_topic()
+	var/dat = get_content()
 	var/datum/browser/popup = new(usr, "modular", "Modify Modules", 600, 600)
 	popup.set_content(dat)
 	popup.open()
 
 /obj/module_holder/proc/get_content()
 	var/dat = ""
-
+	if(power_source)
+		dat += "<b>Power cell charge : [power_source.charge]/[power_source.maxcharge]</b>"
+	else
+		dat += "<b style='color:red'>No power cell installed!</b>"
+	dat += "<hr>"
 	dat += "<table>"
 	for(var/key in installed_modules)
 		var/obj/item/module/module = installed_modules[key]
+		var/has_modes = (module.mode_list && module.mode_list.len > 1)
 		dat += "<tr><th style='text-align:left'>[module.name]</th><th>State</th>"
-		if(!isnull(module.charges))
+		if(module.has_charges)
 			dat += "<th>Charges</th>"
+		if(has_modes)
+			dat += "<th>Mode</th>"
 		dat += "</tr>"
 		dat += "<tr>"
 		dat += "<td style='font-size:10px; line-height:1'>[module.verbose_desc]</td><td style='color:[module.active ? "green" : "red"]'><b>[module.active ? "On" : "Off"]</b></td>"
-		if(!isnull(module.charges))
+		if(module.has_charges)
 			dat += "<td>[module.charges]</td>"
+		if(has_modes)
+			dat += "<td>"
+			dat += "<div>"
+			var/mode = 1
+			for(var/v in module.mode_list)
+				dat += "[module.mode == mode ? "<span class='linkOff'>[v]</span>" : "<A href='?src=\ref[src];target=[module.id];action=switch_mode;mode=[mode]'>[v]</A>"]"
+				mode++
+			dat += "</div>"
+			dat += "</td>"
 		dat += "<td>"
 		dat += "<div>"
-		dat += "<A href='?src=\ref[src];target=[module.id];action=\"toggle\"'>Toggle</A>"
+		dat += "<A href='?src=\ref[src];target=[module.id];action=toggle'>Toggle</A>"
 		if(module.can_be_removed)
-			dat += "<A href='?src=\ref[src];target=[module.id];action=\"eject\"'>Eject</A>"
+			dat += "<A href='?src=\ref[src];target=[module.id];action=eject'>Eject</A>"
 		dat += "</div>"
 		dat += "</td>"
 		dat += "</tr>"
@@ -267,7 +286,14 @@
 			switch(action)
 				if("toggle")
 					module.toggle()
-					updateUsrDialog()
+					. = TRUE
 				if("eject")
 					if(remove(module))
-						updateUsrDialog()
+						. = TRUE
+				if("switch_mode")
+					var/mode = text2num(href_list["mode"])
+					module.switch_mode(mode)
+					. = TRUE
+	
+	if(.) //Only remake the popup if there's a successful action
+		make_topic()
