@@ -74,7 +74,7 @@
 		if(!is_type_in_typecache(target, applicable_atoms))
 			return FALSE
 	if(world.time < next_allowed_time)
-		user << "<span class='notice'>You must wait [round(((next_allowed_time-world.time)/10), 0.1)] more seconds before you can use this module again.</span>"
+		user << "<span class='notice'>You must wait [round(((next_allowed_time-world.time)/10), 0.1)] more seconds before you can use [name] again.</span>"
 		return FALSE
 	return TRUE
 
