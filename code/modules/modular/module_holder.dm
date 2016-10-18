@@ -1,4 +1,7 @@
-/obj/module_holder
+/obj/item/module_holder
+	name = "module holder"
+	desc = "This is a generic module holder, very classified. Please report sightings to the nearest CentComm official...or spawn a subtype of this, if you are the said CentComm official."
+	icon_state = "game_kit"
 	var/module_limit = 0
 	var/list/defense_modules
 	var/list/assault_modules
@@ -8,46 +11,62 @@
 	var/default_removable = TRUE //can the default modules be removed
 	var/obj/item/owner //which object is our owner
 
-/obj/module_holder/New(obj/item/owner, obj_name)
-	if(!owner)
-		return
+/obj/item/module_holder/attackby(obj/item/W, mob/user, params)
+	if(ismodholder(W))
+		user << "<span class='notice'>That would be an interesting topological exercise...</span>"
+	if(ismodule(W))
+		user << "<span class='notice'>You'll need to install the module holder into something before you do that.</span>"
+
+/obj/item/module_holder/New(obj/item/owner)
 	..()
-	src.owner = owner
 	if(default_modules && default_modules.len)
 		module_limit += default_modules.len
 		for(var/type in default_modules)
 			var/obj/item/module/newmod = new type()
 			newmod.can_be_removed = default_removable
 			install(newmod)
-	var/name_string = "Modify Modules"
-	if(obj_name)
-		name_string += "([obj_name])"
-	owner.verbs += new /obj/module_holder/verb/modify_modules(src, name_string)
+	if(owner && istype(owner))
+		install_holder(owner)
 
-/obj/module_holder/Destroy()
+/obj/item/module_holder/Destroy()
 	if(owner)
 		owner.module_holder = null
-		owner.verbs -= /obj/module_holder/verb/modify_modules
+		owner.verbs -= /obj/item/module_holder/verb/modify_modules
 		owner = null
 	return ..()
 
-/obj/module_holder/proc/get_module(id)
+/obj/item/module_holder/proc/get_module(id)
 	if(installed_modules && installed_modules[id])
 		return installed_modules[id]
 
-/obj/module_holder/proc/get_installed_module_list()
+/obj/item/module_holder/proc/get_flat_installed_module_list()
 	. = list()
 	for(var/key in installed_modules)
 		. += installed_modules[key]
 
-/obj/module_holder/proc/has_active_module(id)
+/obj/item/module_holder/proc/get_active_module(id)
 	if(installed_modules && installed_modules[id])
 		var/obj/item/module/module = installed_modules[id]
 		if(module.active)
-			return TRUE
-	return FALSE
+			return module
 
-/obj/module_holder/proc/install(obj/item/module/module, mob/user)
+/obj/item/module_holder/proc/install_holder(obj/item/owner, mob/user)
+	if(owner.module_holder)
+		return FALSE
+	owner.module_holder = src
+	src.owner = owner
+	if(user)
+		user.drop_item() //Inventory code...need to drop before moving into the item
+	forceMove(owner)
+	on_holder_install()
+	return TRUE
+
+/obj/item/module_holder/proc/on_holder_install()
+	if(owner)
+		var/verb_name = "Modify Modules([owner.name])"
+		owner.verbs += new /obj/item/module_holder/verb/modify_modules(src, verb_name)
+
+/obj/item/module_holder/proc/install(obj/item/module/module, mob/user)
 	if(!istype(module) || !owner)
 		return
 	if(!installed_modules)
@@ -78,13 +97,14 @@
 			assault_modules = list()
 		assault_modules[module.id] = module
 
-	user.drop_item() //This is here because inventory code
+	if(user)
+		user.drop_item() //This is here because inventory code
 	module.forceMove(owner)
 	installed_modules[module.id] = module
 	module.on_install(src, owner)
 	return TRUE
 
-/obj/module_holder/proc/remove(obj/item/module/module, force = 0)
+/obj/item/module_holder/proc/remove(obj/item/module/module, force = 0)
 	if(!module || (!installed_modules || !installed_modules.len) || !owner)
 		return
 	if(!installed_modules[module.id])
@@ -110,7 +130,7 @@
 	module.forceMove(get_turf(owner))
 	return TRUE
 
-/obj/module_holder/proc/remove_all(force = 0)
+/obj/item/module_holder/proc/remove_all(force = 0)
 	. = FALSE
 	for(var/key in installed_modules)
 		var/obj/item/module/module_check = installed_modules[key]
@@ -119,18 +139,9 @@
 
 
 /*
-    BEWARE OF THE HOOKS
-
-	Reason these are not just bullet_act/hit_reaction/etc is that if someone ever makes these buildable, I don't want anything
-	weird happening and I don't want modules to try to react to anything on their own.
-
-	Modules also have these exact proc hooks in them, which these call for ALL active modules
-	Hooks are (hook via resolve_modules proc):
-	- hooks into UnarmedAttack proc in code/_onclick/other_mobs.dm
-	- hooks into RangedAttack proc in code/_onclick/other_mobs.dm
-	- hooks into mob ClickOn proc in code/_onclick/click.dm
+    Attack resolution proc - this runs when we click on stuff
 */
-/obj/module_holder/proc/resolve_assault_modules(atom/A, mob/user, resolve_proc)
+/obj/item/module_holder/resolve_assault_modules(atom/A, mob/user, resolve_proc)
 	if(!assault_modules || !assault_modules.len)
 		return
 
@@ -148,16 +159,19 @@
 				resolved = module.on_obj_melee_attack(A, user)
 			if(ARMED_RANGE_CLICK)
 				resolved = module.on_obj_ranged_attack(A, user)
-		
+
 		if(resolved)
 			. = TRUE
 
-/obj/module_holder/proc/resolve_defense_modules(atom/I, mob/user, mob/victim, attack_type, which = ONHIT_LOCAL)
+/*
+	Defense resolution proc - this runs when stuff hits us
+*/
+/obj/item/module_holder/resolve_defense_modules(atom/I, mob/user, mob/victim, attack_type, which = ONHIT_LOCAL)
 	if(!defense_modules)
 		return
 
 	var/list/def_mod_list
-	
+
 	switch(which)
 		if(ONHIT_LOCAL)
 			def_mod_list = defense_modules["local"]
@@ -167,54 +181,39 @@
 	if(!def_mod_list || !def_mod_list.len)
 		return FALSE
 
-	switch(attack_type)
-		if(MELEE_ATTACK)
-			. = resolve_melee_defense(I, user, victim, def_mod_list)
-		if(UNARMED_ATTACK)
-			. = resolve_unarmed_defense(user, victim, def_mod_list)
-		if(PROJECTILE_ATTACK)
-			. = resolve_projectile_defense(I, null, victim, def_mod_list)
-		if(THROWN_PROJECTILE_ATTACK)
-			. = resolve_thrown_defense(I, null, victim, def_mod_list)
+	var/resolved = FALSE
 
-/obj/module_holder/proc/resolve_projectile_defense(obj/item/projectile/I, mob/user, mob/victim, list/mod_list)
-	if(istype(I))
-		user = I.firer
-	for(var/key in mod_list)
-		var/obj/item/module/module = mod_list[key]
-		if(module.on_bullet_act(I, user, victim))
-			. = TRUE
+	for(var/key in def_mod_list)
+		var/obj/item/module/module = def_mod_list[key]
 
-/obj/module_holder/proc/resolve_melee_defense(obj/item/I, mob/user, mob/victim, list/mod_list)
-	for(var/key in mod_list)
-		var/obj/item/module/module = mod_list[key]
-		if(module.on_attacked_by(I, user, victim))
-			. = TRUE
-
-/obj/module_holder/proc/resolve_unarmed_defense(mob/user, mob/victim, list/mod_list)
-	for(var/key in mod_list)
-		var/obj/item/module/module = mod_list[key]
-		if(module.on_attack_hand(user, victim))
-			. = TRUE
-
-/obj/module_holder/proc/resolve_thrown_defense(atom/movable/AM, mob/user, mob/victim, list/mod_list)
-	if(isobj(AM))
-		var/obj/item/thing = AM
-		user = thing.thrownby
-	for(var/key in mod_list)
-		var/obj/item/module/module = mod_list[key]
-		if(module.on_hitby(AM, user, victim))
+		switch(attack_type)
+			if(MELEE_ATTACK)
+				resolved = module.on_attacked_by(I, user, victim)
+			if(UNARMED_ATTACK)
+				resolved = module.on_attack_hand(user, victim)
+			if(PROJECTILE_ATTACK)
+				if(istype(I, /obj/item/projectile))
+					var/obj/item/projectile/proj = I
+					user = proj.firer
+				resolved = module.on_bullet_act(I, user, victim)
+			if(THROWN_PROJECTILE_ATTACK)
+				if(isobj(I))
+					var/obj/item/thing = I
+					user = thing.thrownby
+				resolved = module.on_hitby(I, user, victim)
+	
+		if(resolved)
 			. = TRUE
 
 //This verb is added to the owner item
-/obj/module_holder/verb/modify_modules()
+/obj/item/module_holder/verb/modify_modules()
 	set name = "Modify Modules"
 	set category = "Modules"
 
 	//we are inside of the owner item, but obviously, neither compiler nor runtime can resolve this
-	var/obj/item/current_holder = src 
+	var/obj/item/current_holder = src
 
-	var/obj/module_holder/module_holder = current_holder.get_m_holder()
+	var/obj/item/module_holder/module_holder = current_holder.get_m_holder()
 
 	if(!module_holder)
 		usr << "<span class='notice'>This is an error : Please notify coders that the verb didn't find the module holder, despite you being able to use it!</span>"
@@ -228,21 +227,34 @@
 
 	module_holder.make_topic()
 
-/obj/module_holder/proc/make_topic()
+/obj/item/module_holder/proc/make_topic()
 	var/dat = get_content()
 	var/datum/browser/popup = new(usr, "modular", "Modify Modules", 600, 600)
 	popup.set_content(dat)
 	popup.open()
 
-/obj/module_holder/proc/get_content()
-	var/dat = ""
+/obj/item/module_holder/proc/get_content()
+	var/css = {"<style>
+td.desc {
+	font-size: 10px;
+	line-height: 1;
+	border-style: hidden solid hidden hidden;
+	border-width: 2px;
+}
+td {
+	border-style:hidden solid hidden hidden;
+	border-width: 2px;
+	border-color: white;
+}
+</style>"}
+	var/dat = "<html><head><title>Modify Modules</title>[css]</head><body>"
 	if(power_source)
 		dat += "<b>Power cell charge : [power_source.charge]/[power_source.maxcharge]</b>"
 	else
 		dat += "<b style='color:red'>No power cell installed!</b>"
 	dat += "<hr>"
-	dat += "<table>"
 	for(var/key in installed_modules)
+		dat += "<table>"
 		var/obj/item/module/module = installed_modules[key]
 		var/has_modes = (module.mode_list && module.mode_list.len > 1)
 		dat += "<tr><th style='text-align:left'>[module.name]</th><th>State</th>"
@@ -252,7 +264,7 @@
 			dat += "<th>Mode</th>"
 		dat += "</tr>"
 		dat += "<tr>"
-		dat += "<td style='font-size:10px; line-height:1'>[module.verbose_desc]</td><td style='color:[module.active ? "green" : "red"]'><b>[module.active ? "On" : "Off"]</b></td>"
+		dat += "<td class='desc'>[module.verbose_desc]</td><td style='color:[module.active ? "green" : "red"]'><b>[module.active ? "On" : "Off"]</b></td>"
 		if(module.has_charges)
 			dat += "<td>[module.charges]</td>"
 		if(has_modes)
@@ -272,11 +284,12 @@
 		dat += "</div>"
 		dat += "</td>"
 		dat += "</tr>"
+		dat += "</table>"
 		dat += "<br>"
-	dat += "</table>"
+	dat += "</body></html>"
 	return dat
 
-/obj/module_holder/Topic(href, href_list)
+/obj/item/module_holder/Topic(href, href_list)
 	if(href_list["target"])
 		var/obj/item/module/module = get_module(href_list["target"])
 		if(!istype(module))
@@ -294,6 +307,6 @@
 					var/mode = text2num(href_list["mode"])
 					module.switch_mode(mode)
 					. = TRUE
-	
+
 	if(.) //Only remake the popup if there's a successful action
 		make_topic()

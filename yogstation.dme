@@ -1573,6 +1573,7 @@
 #include "code\modules\modular\mob_procs.dm"
 #include "code\modules\modular\module.dm"
 #include "code\modules\modular\module_holder.dm"
+#include "code\modules\modular\module_holder_types.dm"
 #include "code\modules\modular\resolve_order.dm"
 #include "code\modules\modular\items\modular_gloves.dm"
 #include "code\modules\modular\modules\gravmanip.dm"

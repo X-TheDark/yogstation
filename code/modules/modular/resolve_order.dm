@@ -65,3 +65,4 @@
 	..()
 	append(slot_wear_suit)
 	append(slot_w_uniform)
+	append(slot_shoes)

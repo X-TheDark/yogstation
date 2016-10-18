@@ -2,13 +2,13 @@
 	name = "power glove module"
 	id = "shock"
 	desc = "Allows your gloves to apply ranged shock to target, provided there is a active powerline nearby. \
-		Also insulates your gloves, isn't that nice?"
+		Also insulates your gloves, isn't that nice? Cleverly disguised as a gavel block."
 	verbose_desc = "Requires an exposed powernet wire to be nearby (within 1 tile range). If there is power in it, you will \
 		attempt to apply a ranged shock to the target, after a 1 second delay. If the target is adjacent to you, the shock is instant. Damage depends on the available power in the powernet, so wire the generator directly into the grid for \
 		most effectiveness."
 	insertable_atom_types = list(/obj/item/clothing/gloves)
 	applicable_atom_types = list(/mob/living/carbon)
-	max_range = 7
+	max_range = 6
 	var/old_siemens
 	var/const/SHOCK_COOLDOWN = 30 //3 seconds between shocks
 	var/const/SHOCK_DELAY = 10 //you have to stand in place for 1 second before you actually shock someone. Melee shocks are instant
@@ -28,13 +28,14 @@
 /obj/item/module/assault/shockgloves/on_ranged_attack(atom/A, mob/user)
 	return action(A, user)
 
-/obj/item/module/assault/shockgloves/can_be_applied(atom/A, mob/user, damage)
+/obj/item/module/assault/shockgloves/can_be_applied(atom/A, mob/user)
 	if(!..())
 		return
 	if(world.time < next_allowed_time)
 		user << "<span class='notice'>The gloves cannot be used for another [round(((next_allowed_time-world.time)/10), 0.1)] seconds before they can attempt to shock someone again.</span>"
 		return FALSE
 	var/found_cable = FALSE
+	var/damage
 	for(var/obj/structure/cable/cable in view(1, user))
 		found_cable = TRUE
 		if(cable.powernet)
@@ -47,12 +48,11 @@
 	if(!damage)
 		user << "<span class='warning'>There are no cables nearby that have enough power to harm someone!</span>"
 		return FALSE
-	return TRUE
+	return damage //I know this isn't proper, but why in view(1, user) twice if I can avoid it?
 
 //If shocking is successful, it stops processing the attack (so you won't try to help shake the person up after shocking them)
 /obj/item/module/assault/shockgloves/action(mob/living/carbon/A, mob/user, instant = 0)
-	var/damage
-	can_be_applied(A, user, damage)
+	var/damage = can_be_applied(A, user)
 
 	if(!damage)
 		return

@@ -85,7 +85,7 @@
 	if(!istype(affecting)) //if we pass the zone (projectile attack, for example)
 		affecting = get_bodypart(affecting)
 
-	if(!affecting) //limb missing, copy from species code
+	if(!affecting) //limb missing, failsafe copy from species code
 		affecting = bodyparts[1]
 
 	var/datum/resolve_order/human/defense_resolve_order
@@ -101,14 +101,14 @@
 	if(!defense_resolve_order || !defense_resolve_order.order || !defense_resolve_order.order.len)
 		return FALSE
 
-	//Resolve global defense modules first (personal shield, for example, etc)
-	//We check all global modules before resolving
+	//Resolve global defense modules first (personal shields, for example, etc)
+	//We resolve all global modules, rather than stopping as soon as one of them returns TRUE
 	var/resolved = FALSE
 	for(var/obj/item/v in contents)
 		if(v.resolve_defense_modules(I, user, src, attack_type, ONHIT_GLOBAL))
 			resolved = TRUE
 
-	if(resolved) //if global modules resolve this, we stop
+	if(resolved) //if one of the global modules resolve this, we stop here
 		return TRUE
 
 	//Now resolve modules on the hit bodypart

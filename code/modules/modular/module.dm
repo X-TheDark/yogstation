@@ -1,5 +1,6 @@
 /obj/item/module
 	name = "generic module"
+	icon_state = "gavelblock"
 	desc = "A module that can be inserted into equipment that supports modules...although this one is just a dummy that is not functional."
 	var/verbose_desc //description to show in the module modification menu
 	var/id = "module" //this should be thought of as a slot rather than id, you can only place 1 module with the same id into the holder
@@ -25,7 +26,7 @@
 	var/list/applicable_atom_types //which atom types (and subtypes) the module effects can be applied to. Will be applied to anything if not defined...please be careful with this
 	var/list/insertable_atom_types //what this can be inserted into. Requires definition, otherwise module cannot be inserted into anything (this is for safety, you'll have to be explicit in what equipment effects you are going to process in your code)
 	var/list/insertable_atoms //typecache of things we can be inserted into
-	var/obj/module_holder/holder
+	var/obj/item/module_holder/holder
 
 /obj/item/module/New()
 	..()
@@ -94,13 +95,13 @@
 		return FALSE
 	return TRUE
 
-/obj/item/module/proc/on_install(obj/module_holder/holder, obj/item/owner)
+/obj/item/module/proc/on_install(obj/item/module_holder/holder, obj/item/owner)
 	if(!holder)
 		return
 	src.holder = holder
 
 //Toggle off before removing, just in case
-/obj/item/module/proc/on_remove(obj/module_holder/holder, obj/item/owner)
+/obj/item/module/proc/on_remove(obj/item/module_holder/holder, obj/item/owner)
 	if(!holder)
 		return
 	if(active && can_be_toggled)
@@ -140,7 +141,7 @@
 
 //This needs to be called manually at the end of everything
 /obj/item/module/proc/action(mob/target, mob/user)
-	add_logs(user, target, "attacked using module [name]", src)
+	add_logs(user, target, "attacked using module", src)
 
 /obj/item/module/assault
 	module_type = MODULE_ASSAULT

@@ -4,7 +4,7 @@
 
 #define in_range(source, user) (get_dist(source, user) <= 1)
 
-#define ismodholder(O) (istype(O, /obj/module_holder))
+#define ismodholder(O) (istype(O, /obj/item/module_holder))
 
 #define ismodule(O) (istype(O, /obj/item/module))
 
