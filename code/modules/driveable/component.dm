@@ -2,15 +2,43 @@
 /obj/item/component
 	name = "component of a driveable"
 	desc = "SAMPLE TEXT"
-	icon_state = "thisisabstract"
-	
-	var/obj/driveable/chassis
-	var/max_health
-	var/damage
+	icon_state = "default"
 
-/obj/item/component/proc/get_available_slots()
+	var/component_type
+	var/component_weight
+	var/component_class
+
+	var/obj/driveable/chassis
+	var/list/component_actions
+
+	var/list/compatible_types
+	var/list/incompatible_types
+
+	// Used internally
+	var/list/compatible_typecache
+	var/list/incompatible_typecache
+
+/obj/item/component/New()
+	..()
+	if(compatible_types && compatible_types.len)
+		compatible_typecache = typecacheof(compatible_types)
+	if(incompatible_types && incompatible_types.len)
+		incompatible_typecache = typecacheof(incompatible_types)
 
 /obj/item/component/proc/on_install(obj/driveable/where, mob/user)
 	chassis = where
 
+// First check typecache compatibility, if that gives us some sort of result, we check it further via custom rules
 /obj/item/component/proc/is_compatible(obj/item/component/what)
+	var/result = typecache_compatibility(what)
+	. = custom_compatibility(what, result)
+
+// Override this if you want to check for something specific in the component, by default returns typecache check result
+/obj/item/component/proc/custom_compatibility(obj/item/component/what, typecache_check_result)
+	return TRUE //typecache_check_result
+
+/obj/item/component/proc/typecache_compatibility(obj/item/component/what)
+	if(compatible_types && compatible_types.len)
+		. = is_type_in_typecache(what, compatible_typecache)
+	if(incompatible_types && incompatible_types.len)
+		. = !is_type_in_typecache(what, incompatible_typecache)

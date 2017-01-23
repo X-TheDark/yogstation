@@ -2,30 +2,54 @@
 // Pilot & Co are here for the purposes of damage calculations/armour penetration/etc
 /obj/item/component/body
 	name = "body"
-	max_health = 100
 	icon = 'icons/driveable/components/bodies.dmi'
-	icon_state = "thisisabstract"
+	icon_state = "default"
+	component_type = COMPONENT_BODY
+
+	// Vision overlay for when the bodies armor is closed or lifted
+	// If we have a head, these don't apply, as head gives 360 vision as long as it works
+	var/can_lift_armor = FALSE //Can't lift/open armor, just enter/exit
+	var/vision_overlay_closed
+	var/vision_overlay_open
 
 	var/is_sealed = FALSE
+	var/seal_broken
 	var/using_internal_tank = FALSE
 	
 	var/rotary = FALSE //can body rotate independently of legs?
 
+	var/max_armslots = 2
+	var/list/installed_arms = list()
+
 	var/passenger_seats = 0 //there's always a driver, these folk are separate
 	var/list/passengers
 
+/obj/item/component/body/remove_air(amount)
+	if(is_sealed)
+		. = null
+	else
+		. = chassis.loc.remove_air(amount)
+
+/obj/item/component/body/return_air()
+	if(is_sealed)
+		. = null
+	else
+		. = chassis.loc.return_air()
+
+/obj/item/component/body/proc/is_sealed()
+	return is_sealed
+
 /obj/item/component/body/is_compatible(obj/item/component/what)
+	return TRUE
 
 /obj/item/component/body/proc/supports_arms()
-	return FALSE
+	return TRUE
 
 /obj/item/component/body/proc/supports_head()
 	return FALSE
 
 /obj/item/component/body/proc/has_free_arm_slots()
-	return FALSE
-
-/obj/item/component/body/proc/install(obj/item/component/component, mob/user, install_type)
+	return max_armslots - installed_arms.len
 
 // Driver is taken care of in /obj/driveable
 /obj/item/component/body/proc/can_enter(mob/user, passenger = FALSE)

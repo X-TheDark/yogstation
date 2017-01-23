@@ -2,7 +2,8 @@
 /obj/item/component/legs
 	name = "legs"
 	icon = 'icons/driveable/components/legs.dmi'
-	icon_state = "thisisabstract"
+	icon_state = "default"
+	component_type = COMPONENT_LEGS
 
 	// Delay to movement/turning after a turn
 	var/turn_delay
@@ -10,14 +11,14 @@
 	var/move_delay
 
 /obj/item/component/legs/is_compatible(obj/item/component/what)
+	return TRUE
 
 /obj/item/component/legs/proc/can_move()
+	return TRUE
 
 // Legpair is, well, a pair of legs
 // This is here to change it to track left/right side damage separately down the line, if necessary
-/obj/item/components/legs/legpair
+/obj/item/component/legs/legpair
 
-// Undercarriage is a complete base
-// This is here to differentiate between actual legs (that could be made to track damage separately) and something
-// like a wheeled base (that would not have separate sides for damage purposes)
-/obj/item/components/legs/undercarriage
+// Undercarriage is a complete base upon which the torso "drives", things like wheels/tracks/hoverstuff
+/obj/item/component/legs/undercarriage

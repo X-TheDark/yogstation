@@ -1,10 +1,6 @@
 /obj/driveable/attackby(obj/item/W, mob/user, params)
 	if(istype(W, /obj/item/component))
 		attempt_construction(W, user)
-	else if(istype(W, /obj/item/equipment))
-		attempt_installation(W, user)
-	else if(istype(W, /obj/item/upgrade))
-		attempt_upgrade(W, user)
 	else
 		. = ..()
 
