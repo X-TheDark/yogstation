@@ -4,6 +4,7 @@
 	name = "body"
 	icon = 'icons/driveable/components/bodies.dmi'
 	icon_state = "default"
+
 	component_type = COMPONENT_BODY
 
 	// Vision overlay for when the bodies armor is closed or lifted
@@ -37,19 +38,16 @@
 		. = chassis.loc.return_air()
 
 /obj/item/component/body/proc/is_sealed()
-	return is_sealed
-
-/obj/item/component/body/is_compatible(obj/item/component/what)
-	return TRUE
+	. = is_sealed
 
 /obj/item/component/body/proc/supports_arms()
-	return TRUE
+	. = TRUE
 
 /obj/item/component/body/proc/supports_head()
-	return FALSE
+	. = FALSE
 
 /obj/item/component/body/proc/has_free_arm_slots()
-	return max_armslots - installed_arms.len
+	. = max_armslots - installed_arms.len
 
 // Driver is taken care of in /obj/driveable
 /obj/item/component/body/proc/can_enter(mob/user, passenger = FALSE)
@@ -81,6 +79,6 @@
 
 /obj/item/component/body/proc/supports_passengers()
 	if(passenger_seats > 0)
-		return TRUE
+		. = TRUE
 	else
-		return FALSE
+		. = FALSE

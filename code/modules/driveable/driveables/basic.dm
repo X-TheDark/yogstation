@@ -5,6 +5,9 @@
 	desc = "Mech/Vehicle chassis. Examine to see what is needed to finish construction."
 	icon_state = "basic"
 
+	// Internal use
+	var/driveable_complete = FALSE
+
 	// These will be manipulated as the mech/vehicle get finished
 	density = 1
 	opacity = 0
@@ -23,14 +26,33 @@
 	var/lights_on = FALSE
 	var/lights_power = 5
 
+
+/obj/driveable/frame/basic/change_dir(direction)
+	if(dir != direction)
+		dir = direction
+		if(body)
+			body.dir = direction
+		if(legs)
+			legs.dir = direction
+		if(head)
+			head.dir = direction
+		if(l_arm)
+			l_arm.dir = direction
+		if(r_arm)
+			r_arm.dir = direction
+		// Arms swap their position between being overlay and being underlay
+		update_mutable_overlays()
+
 /obj/driveable/frame/basic/relaymove(mob/user, direction)
-	if(dir == direction && can_move())
-		frame_step(direction)
-	else if(dir != direction && can_turn())
-		frame_turn(direction)
+	if((user == driver) && can_move())
+		legs.handle_movement(user, direction)
+
+/obj/driveable/frame/basic/proc/delay_next_move(delay)
+	if(delay)
+		next_move = world.time + delay
 
 /obj/driveable/frame/basic/MouseDrop_T(atom/dropping, mob/user)
-	if(!user.canUseTopic(src, TRUE) || (user != dropping))
+	if((user != dropping) || !user.canUseTopic(src, TRUE))
 		return
 	if(!ishuman(user))
 		return
@@ -61,26 +83,6 @@
 	if(body && body.is_sealed)
 		return body.return_air()
 	. = ..()
-
-/obj/driveable/frame/basic/proc/frame_turn(direction)
-	dir = direction
-	next_move = world.time + 20
-	if(body)
-		body.dir = dir
-	if(legs)
-		legs.dir = dir
-	if(head)
-		head.dir = dir
-	if(l_arm)
-		l_arm.dir = dir
-	if(r_arm)
-		r_arm.dir = dir
-	update_visuals()
-
-/obj/driveable/frame/basic/proc/frame_step(direction)
-	. = step(src, direction)
-	if(.)
-		next_move = world.time + 10
 
 /obj/driveable/frame/basic/proc/can_enter(mob/user, passenger = FALSE)
 	return TRUE
@@ -123,6 +125,7 @@
 		RemoveActions(M)
 	body.on_eject(M, passenger)
 
+// Driveable frame-level can_move checks
 /obj/driveable/frame/basic/proc/can_move()
 	return TRUE
 	//
@@ -136,9 +139,6 @@
 		return FALSE
 	if(!legs)
 		driver << "<span class='warning'>The [name] does not have any means of locomotion!</span>"
-		return FALSE
-	if(!legs.can_move())
-		driver << "<span class='warning'>The [name] cannot move due to damaged means of locomotion.</span>"
 		return FALSE
 
 /obj/driveable/frame/basic/proc/can_turn()
@@ -194,6 +194,7 @@
 		install_component(component, user)
 	else
 		user << "<span class='warning'>The [component.name] seems to be stuck to your hand!</span>"
+		return FALSE
 
 
 /obj/driveable/frame/basic/attempt_installation(obj/item/component/component, mob/user)
@@ -215,30 +216,46 @@
 			head = component
 	component.forceMove(src)
 	component.on_install(src, user)
-	update_visuals()
+	on_component_install(component, user)
+	add_component_overlay(component)
 
-/obj/driveable/frame/basic/proc/update_visuals()
-	overlays.Cut()
-	underlays.Cut()
-	if(head)
-		overlays += image(head.icon, head.icon_state)
-	if(legs)
-		overlays += image(legs.icon, legs.icon_state)
-	if(body)
-		overlays += image(body.icon, body.icon_state)
+/obj/driveable/frame/basic/proc/remove_component(obj/item/component/component, mob/user)
+
+/obj/driveable/frame/basic/proc/add_component_overlay(obj/item/component/component)
+	if(component.is_overlay_immutable)
+		if(!component.component_image) // immutables need only to be constructed once
+			component.component_image = image(component.icon, component.icon_state)
+		overlays += component.component_image
+	else
+		if((component == r_arm) || (component == l_arm))
+			var/obj/item/component/arm/arm_obj = component
+			if(component == r_arm)
+				arm_obj.component_image = image(arm_obj.icon, arm_obj.icon_right)
+			else
+				arm_obj.component_image = image(arm_obj.icon, arm_obj.icon_left)
+			overlays += arm_obj.component_image
+			update_mutable_overlays()
+
+/obj/driveable/frame/basic/proc/update_mutable_overlays()
 	switch(dir)
 		if(EAST)
 			if(r_arm)
-				overlays += image(r_arm.icon, r_arm.icon_right)
+				underlays -= r_arm.component_image
+				overlays += r_arm.component_image
 			if(l_arm)
-				underlays += image(l_arm.icon, l_arm.icon_left)
+				overlays -= l_arm.component_image
+				underlays += l_arm.component_image
 		if(WEST)
 			if(r_arm)
-				underlays += image(r_arm.icon, r_arm.icon_right)
+				overlays -= r_arm.component_image
+				underlays += r_arm.component_image
 			if(l_arm)
-				overlays += image(l_arm.icon, l_arm.icon_left)
-		else
-			if(r_arm)
-				overlays += image(r_arm.icon, r_arm.icon_right)
-			if(l_arm)
-				overlays += image(l_arm.icon, l_arm.icon_left)
+				underlays -= l_arm.component_image
+				overlays += l_arm.component_image
+
+// Make frame invisible if we have both body and legs
+/obj/driveable/frame/basic/proc/on_component_install(obj/item/component/component, mob/user)
+	if(!driveable_complete && body && legs)
+		icon_state = null	//turn the frame invisible, using alpha = 0 messes with overlays/underlays
+		anchored = 1
+		driveable_complete = TRUE

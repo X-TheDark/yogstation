@@ -3,18 +3,37 @@
 	name = "legs"
 	icon = 'icons/driveable/components/legs.dmi'
 	icon_state = "default"
+
 	component_type = COMPONENT_LEGS
+
+	// Bitflag for various leg properties, check _DEFINES/driveable.dm for those
+	var/properties
 
 	// Delay to movement/turning after a turn
 	var/turn_delay
 	// Delay to movement/turning after a step
 	var/move_delay
 
-/obj/item/component/legs/is_compatible(obj/item/component/what)
-	return TRUE
+/obj/item/component/legs/proc/can_move(mob/user)
+	. = TRUE
+	if(!chassis)
+		. = FALSE
 
-/obj/item/component/legs/proc/can_move()
-	return TRUE
+/obj/item/component/legs/proc/handle_movement(mob/user, direction)
+	if(can_move(user))
+		if(chassis.dir != direction)
+			handle_turn(direction)
+		else
+			handle_step(direction)
+
+/obj/item/component/legs/proc/handle_turn(direction)
+	if(properties & LEGS_NO_TURN)
+		handle_step(direction)
+	else
+		chassis.change_dir(direction)
+
+/obj/item/component/legs/proc/handle_step(direction)
+	step(chassis, direction)
 
 // Legpair is, well, a pair of legs
 // This is here to change it to track left/right side damage separately down the line, if necessary

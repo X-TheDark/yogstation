@@ -14,3 +14,5 @@
 	var/list/component_actions
 	// Actions given by the equipment
 	var/list/equipment_actions
+
+/obj/driveable/frame/proc/change_dir(direction)

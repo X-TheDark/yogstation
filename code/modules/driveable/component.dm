@@ -4,11 +4,20 @@
 	desc = "SAMPLE TEXT"
 	icon_state = "default"
 
+	// Only bluespace backpack can fit this, can't even be thrown properly
+	w_class = 6
+	throw_range = 0
+	throw_speed = 0
+	throwforce = 0
+	
+	var/component_image
+	var/is_overlay_immutable = TRUE // Does this always appear as an overlay?
+	
 	var/component_type
 	var/component_weight
 	var/component_class
 
-	var/obj/driveable/chassis
+	var/obj/driveable/frame/chassis
 	var/list/component_actions
 
 	var/list/compatible_types
@@ -35,7 +44,7 @@
 
 // Override this if you want to check for something specific in the component, by default returns typecache check result
 /obj/item/component/proc/custom_compatibility(obj/item/component/what, typecache_check_result)
-	return TRUE //typecache_check_result
+	. = TRUE //typecache_check_result
 
 /obj/item/component/proc/typecache_compatibility(obj/item/component/what)
 	if(compatible_types && compatible_types.len)

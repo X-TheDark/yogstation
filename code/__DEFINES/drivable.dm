@@ -22,3 +22,7 @@
 #define CHECK_ANY		1	// One of the classes defined must be unlocked to mount this
 #define CHECK_ALL		2	// All classes must be unlocked
 #define CHECK_CUSTOM	3	// For all your snowflake needs
+
+// Leg properties
+#define LEGS_NO_TURN	0x1	// These legs don't take a turn to...turn, human movement
+#define LEGS_SIEGE		0x2 // Legs can Siege, meaning they count as Heavy class
