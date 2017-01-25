@@ -14,10 +14,9 @@
 	var/vision_overlay_open
 
 	var/is_sealed = FALSE
-	var/seal_broken
-	var/using_internal_tank = FALSE
-	
-	var/rotary = FALSE //can body rotate independently of legs?
+	var/using_internal_tank = TRUE //So we don't start to suffocate once we enter
+	var/obj/item/weapon/tank/internals/internal_tank
+	var/internal_tank_type = /obj/item/weapon/tank/internals/air
 
 	var/max_armslots = 2
 	var/list/installed_arms = list()
@@ -25,26 +24,28 @@
 	var/passenger_seats = 0 //there's always a driver, these folk are separate
 	var/list/passengers
 
+/obj/item/component/body/New()
+	if(is_sealed && ispath(internal_tank_type, /obj/item/weapon/tank/internals))
+		internal_tank = new internal_tank_type(src)
+		if(!component_actions)
+			component_actions = list()
+
+// Cabin has no gas mix for simplicity, all air for sealed bodies is taken from their tank
 /obj/item/component/body/remove_air(amount)
-	if(is_sealed)
-		. = null
-	else
-		. = chassis.loc.remove_air(amount)
+	if(is_sealed && using_internal_tank && internal_tank)
+		return internal_tank.remove_air(amount)
 
 /obj/item/component/body/return_air()
-	if(is_sealed)
-		. = null
-	else
-		. = chassis.loc.return_air()
-
-/obj/item/component/body/proc/is_sealed()
-	. = is_sealed
+	if(is_sealed && using_internal_tank && internal_tank)
+		return internal_tank.return_air()
 
 /obj/item/component/body/proc/supports_arms()
-	. = TRUE
+	if(max_armslots > 0)
+		return TRUE
+	else
+		return FALSE
 
 /obj/item/component/body/proc/supports_head()
-	. = FALSE
 
 /obj/item/component/body/proc/has_free_arm_slots()
 	. = max_armslots - installed_arms.len
@@ -57,10 +58,6 @@
 			. = FALSE
 		if(passengers && (passengers.len == passenger_seats))
 			. = FALSE
-
-/obj/item/component/body/remove_air(amount)
-
-/obj/item/component/body/return_air()
 
 // Driver handled in /obj/driveable, here we only handle passengers here
 /obj/item/component/body/proc/on_enter(mob/M, passenger = FALSE)

@@ -1,4 +1,4 @@
-// These actions are attached to the frame that you're driving. They are the basic actions, such as switching lights/ejecting (available to all vehicles/mechs by default)
+// These actions are attached to the frame that you're driving. They are the basic actions, such as switching lights/ejecting (available to driveable frames by default)
 
 /datum/action/innate/driveable/mech_eject
 	name = "Eject From Mech"

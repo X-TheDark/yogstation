@@ -15,4 +15,7 @@
 	// Actions given by the equipment
 	var/list/equipment_actions
 
+	var/next_move = 0
+	var/next_click = 0
+
 /obj/driveable/frame/proc/change_dir(direction)

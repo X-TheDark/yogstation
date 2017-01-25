@@ -20,11 +20,11 @@
 	var/obj/item/component/arm/l_arm
 	var/obj/item/component/arm/r_arm
 
-	var/next_move = 0
-	var/next_click = 0
-
 	var/lights_on = FALSE
 	var/lights_power = 5
+
+	var/next_air_warning = 0
+	var/air_warning_delay = 40 //Warn user if the cabin is sealed but no air in it once every this deciseconds
 
 
 /obj/driveable/frame/basic/change_dir(direction)
@@ -40,14 +40,32 @@
 			l_arm.dir = direction
 		if(r_arm)
 			r_arm.dir = direction
-		// Arms swap their position between being overlay and being underlay
+		// Arms swap their position between being overlay and being underlay for super-coolness factor
 		update_mutable_overlays()
 
 /obj/driveable/frame/basic/relaymove(mob/user, direction)
-	if((user == driver) && can_move())
-		legs.handle_movement(user, direction)
+	if((user == driver) && can_move() && isturf(loc))
+		// this is successful only if we actually make a step, if it's a turn, legs will call change_dir proc of the frame
+		. = legs.handle_movement(user, direction)
 
-/obj/driveable/frame/basic/proc/delay_next_move(delay)
+/obj/driveable/frame/Bump(atom/obstacle, custom_bump)
+	// Copy paste from mech code
+	if(custom_bump)
+		if(..()) //mech was thrown
+			return
+		if(istype(obstacle, /obj))
+			var/obj/O = obstacle
+			if(!O.anchored)
+				step(obstacle, dir)
+		else if(istype(obstacle, /mob))
+			step(obstacle, dir)
+
+// By this point, our loc is the turf we moved onto, oldloc is the turf we came from
+// Could be useful for on move stuff, like trampling, leaving a trail of fire.
+/obj/driveable/frame/Moved(atom/oldloc, direction)
+	. = ..()
+
+/obj/driveable/frame/proc/delay_next_move(delay)
 	if(delay)
 		next_move = world.time + delay
 
@@ -76,13 +94,21 @@
 
 /obj/driveable/frame/basic/remove_air(amount)
 	if(body && body.is_sealed)
-		return body.remove_air(amount)
-	. = ..()
+		. = body.remove_air(amount)
+		if(!. && driver && (world.time > next_air_warning))
+			driver << "<span class='userdanger'>Your cabin's air tank has no more air! You will suffocate if you don't do something!</span>"
+			next_air_warning = world.time + air_warning_delay
+	else
+		. = ..()
 
 /obj/driveable/frame/basic/return_air()
 	if(body && body.is_sealed)
-		return body.return_air()
-	. = ..()
+		. = body.return_air()
+		if(!. && driver && (world.time > next_air_warning))
+			driver << "<span class='userdanger'>There's no air tank to breathe from! You will suffocate if you don't do something!</span>"
+			next_air_warning = world.time + air_warning_delay
+	else
+		. = ..()
 
 /obj/driveable/frame/basic/proc/can_enter(mob/user, passenger = FALSE)
 	return TRUE
@@ -98,7 +124,7 @@
 		user << "<span class='warning'>You can't enter the [name] with other creatures attached to you!</span>"
 		return FALSE
 	if(driver && !passenger)
-		user << "<span class='warning'>There's already someone in the [name]!</span>"
+		user << "<span class='warning'>There's already someone driving the [name]!</span>"
 		return FALSE
 	. = body.can_enter(user, passenger)
 
@@ -196,11 +222,6 @@
 		user << "<span class='warning'>The [component.name] seems to be stuck to your hand!</span>"
 		return FALSE
 
-
-/obj/driveable/frame/basic/attempt_installation(obj/item/component/component, mob/user)
-
-/obj/driveable/frame/basic/attempt_upgrade(obj/item/component/component, mob/user)
-
 /obj/driveable/frame/basic/proc/install_component(obj/item/component/component, mob/user)
 	switch(component.component_type)
 		if(COMPONENT_BODY)
@@ -233,29 +254,47 @@
 				arm_obj.component_image = image(arm_obj.icon, arm_obj.icon_right)
 			else
 				arm_obj.component_image = image(arm_obj.icon, arm_obj.icon_left)
-			overlays += arm_obj.component_image
 			update_mutable_overlays()
 
 /obj/driveable/frame/basic/proc/update_mutable_overlays()
 	switch(dir)
 		if(EAST)
 			if(r_arm)
+				overlays -= r_arm.component_image
 				underlays -= r_arm.component_image
 				overlays += r_arm.component_image
 			if(l_arm)
+				underlays -= l_arm.component_image
 				overlays -= l_arm.component_image
 				underlays += l_arm.component_image
 		if(WEST)
 			if(r_arm)
+				underlays -= r_arm.component_image
 				overlays -= r_arm.component_image
 				underlays += r_arm.component_image
 			if(l_arm)
+				overlays -= l_arm.component_image
 				underlays -= l_arm.component_image
 				overlays += l_arm.component_image
 
 // Make frame invisible if we have both body and legs
 /obj/driveable/frame/basic/proc/on_component_install(obj/item/component/component, mob/user)
+	if(component.component_actions && component.component_actions.len)
+		LAZYINITLIST(component_actions)
+		component_actions[component] = component.component_actions
+		if(driver)
+			component.GrantComponentActions(driver)
 	if(!driveable_complete && body && legs)
 		icon_state = null	//turn the frame invisible, using alpha = 0 messes with overlays/underlays
 		anchored = 1
 		driveable_complete = TRUE
+
+/obj/driveable/frame/basic/proc/on_component_remove(obj/item/component/component, mob/user)
+	if(component_actions && component_actions[component])
+		LAZYREMOVE(component_actions, component)
+		if(driver)
+			component.RemoveComponentActions(driver)
+	if(driveable_complete && (!body || !legs))
+		icon_state = initial(icon_state)
+		anchored = 0
+		driveable_complete = FALSE

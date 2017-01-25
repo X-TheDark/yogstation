@@ -4,7 +4,7 @@
 	desc = "SAMPLE TEXT"
 	icon_state = "default"
 
-	// Only bluespace backpack can fit this, can't even be thrown properly
+	// Bulky as hell, only bluespace backpack can fit this, can't even be thrown properly
 	w_class = 6
 	throw_range = 0
 	throw_speed = 0
@@ -51,3 +51,15 @@
 		. = is_type_in_typecache(what, compatible_typecache)
 	if(incompatible_types && incompatible_types.len)
 		. = !is_type_in_typecache(what, incompatible_typecache)
+
+/obj/item/component/proc/GrantComponentActions(mob/user, human_occupant = 0)
+	if(component_actions && component_actions.len)
+		for(var/v in component_actions)
+			var/datum/action/innate/driveable/action = v
+			action.Grant(user, chassis, src)
+
+/obj/item/component/proc/RemoveComponentActions(mob/user)
+	if(component_actions && component_actions.len)
+		for(var/v in component_actions)
+			var/datum/action/innate/driveable/action = v
+			action.Remove(user)
