@@ -93,7 +93,7 @@
 				enter(user, passenger)
 
 /obj/driveable/frame/basic/remove_air(amount)
-	if(body && body.is_sealed)
+	if(body && body.is_sealed && body.using_internal_tank)
 		. = body.remove_air(amount)
 		if(!. && driver && (world.time > next_air_warning))
 			driver << "<span class='userdanger'>Your cabin's air tank has no more air! You will suffocate if you don't do something!</span>"
@@ -102,7 +102,7 @@
 		. = ..()
 
 /obj/driveable/frame/basic/return_air()
-	if(body && body.is_sealed)
+	if(body && body.is_sealed && body.using_internal_tank)
 		. = body.return_air()
 		if(!. && driver && (world.time > next_air_warning))
 			driver << "<span class='userdanger'>There's no air tank to breathe from! You will suffocate if you don't do something!</span>"
@@ -241,6 +241,20 @@
 	add_component_overlay(component)
 
 /obj/driveable/frame/basic/proc/remove_component(obj/item/component/component, mob/user)
+	if(component == body)
+		body = null
+	if(component == r_arm)
+		r_arm = null
+	if(component == legs)
+		legs = null
+	if(component == l_arm)
+		l_arm = null
+	if(component == head)
+		head = null
+	component.forceMove(get_turf(src))
+	component.on_remove(user)
+	on_component_remove(component, user)
+	remove_component_overlay(component)
 
 /obj/driveable/frame/basic/proc/add_component_overlay(obj/item/component/component)
 	if(component.is_overlay_immutable)
@@ -254,7 +268,13 @@
 				arm_obj.component_image = image(arm_obj.icon, arm_obj.icon_right)
 			else
 				arm_obj.component_image = image(arm_obj.icon, arm_obj.icon_left)
+			overlays += arm_obj.component_image
 			update_mutable_overlays()
+
+/obj/driveable/frame/basic/proc/remove_component_overlay(obj/item/component/component)
+	overlays -= component.component_image
+	if(component.component_type == COMPONENT_ARM)
+		underlays -= component.component_image
 
 /obj/driveable/frame/basic/proc/update_mutable_overlays()
 	switch(dir)

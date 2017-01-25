@@ -44,7 +44,6 @@
 	chassis = D
 	..()
 
-
 // Equipment action type
 /datum/action/item_action/driveable/equipment
 	var/obj/item/equipment/equipment
@@ -52,7 +51,6 @@
 /datum/action/item_action/driveable/equipment/Grant(mob/living/L, obj/driveable/frame/basic/D, obj/item/equipment/E)
 	equipment = E
 	..()
-
 
 // Component action type
 /datum/action/item_action/driveable/component

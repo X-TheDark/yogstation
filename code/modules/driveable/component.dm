@@ -37,6 +37,9 @@
 /obj/item/component/proc/on_install(obj/driveable/where, mob/user)
 	chassis = where
 
+/obj/item/component/proc/on_remove(mob/user)
+	chassis = null
+
 // First check typecache compatibility, if that gives us some sort of result, we check it further via custom rules
 /obj/item/component/proc/is_compatible(obj/item/component/what)
 	var/result = typecache_compatibility(what)

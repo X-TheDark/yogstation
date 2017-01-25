@@ -13,10 +13,11 @@
 	var/vision_overlay_closed
 	var/vision_overlay_open
 
-	var/is_sealed = FALSE
+	var/is_sealed = TRUE
 	var/using_internal_tank = TRUE //So we don't start to suffocate once we enter
 	var/obj/item/weapon/tank/internals/internal_tank
 	var/internal_tank_type = /obj/item/weapon/tank/internals/air
+	var/datum/gas_mixture/cabin_air
 
 	var/max_armslots = 2
 	var/list/installed_arms = list()
@@ -27,17 +28,39 @@
 /obj/item/component/body/New()
 	if(is_sealed && ispath(internal_tank_type, /obj/item/weapon/tank/internals))
 		internal_tank = new internal_tank_type(src)
-		if(!component_actions)
-			component_actions = list()
+		LAZYINITLIST(component_actions)
+		component_actions += new /datum/action/innate/driveable/component/mech_toggle_internals
+		add_cabin_air()
 
-// Cabin has no gas mix for simplicity, all air for sealed bodies is taken from their tank
+// On creation, copy contents of the air tank and remove a portion, based on cabin volume
+// Allows non-standard tank types for bodies
+/obj/item/component/body/proc/add_cabin_air()
+	var/cabin_volume = 35
+	var/datum/gas_mixture/tank_mix = internal_tank.return_air()
+	var/tank_volume = tank_mix.return_volume()
+	cabin_air = tank_mix.copy()
+	cabin_air.remove_ratio(cabin_volume/tank_volume)
+	cabin_air.volume = cabin_volume
+
+// Try to remove from tank first in all cases, leave cabin air untouched for as long as possible
+// Not realistic, but why bother with more complicated solutions?
 /obj/item/component/body/remove_air(amount)
-	if(is_sealed && using_internal_tank && internal_tank)
-		return internal_tank.remove_air(amount)
+	if(amount && internal_tank)
+		var/datum/gas_mixture/tank_mix = internal_tank.return_air()
+		var/amount_in_tank = tank_mix.total_moles()
+		if(amount_in_tank > 0)
+			if(amount > amount_in_tank)
+				cabin_air.merge(tank_mix)
+				. = cabin_air.remove(amount)
+			else
+				. = internal_tank.remove_air(amount)
+		else
+			. = cabin_air.remove(amount)
 
+// Return cabin air for pressure/etc things
 /obj/item/component/body/return_air()
-	if(is_sealed && using_internal_tank && internal_tank)
-		return internal_tank.return_air()
+	if(internal_tank)
+		return cabin_air
 
 /obj/item/component/body/proc/supports_arms()
 	if(max_armslots > 0)
