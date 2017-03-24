@@ -20,54 +20,14 @@
 	var/obj/item/component/arm/l_arm
 	var/obj/item/component/arm/r_arm
 
+	var/list/component_list
+
 	var/lights_on = FALSE
 	var/lights_power = 5
 
 	var/next_air_warning = 0
 	var/air_warning_delay = 40 //Warn user if the cabin is sealed but no air in it once every this deciseconds
 
-
-/obj/driveable/frame/basic/change_dir(direction)
-	if(dir != direction)
-		dir = direction
-		if(body)
-			body.dir = direction
-		if(legs)
-			legs.dir = direction
-		if(head)
-			head.dir = direction
-		if(l_arm)
-			l_arm.dir = direction
-		if(r_arm)
-			r_arm.dir = direction
-		// Arms swap their position between being overlay and being underlay for super-coolness factor
-		update_mutable_overlays()
-
-/obj/driveable/frame/basic/relaymove(mob/user, direction)
-	if((user == driver) && can_move() && isturf(loc))
-		// this is successful only if we actually make a step, if it's a turn, legs will call change_dir proc of the frame
-		. = legs.handle_movement(user, direction)
-
-/obj/driveable/frame/Bump(atom/obstacle, custom_bump)
-	// Copy paste from mech code
-	if(custom_bump)
-		if(..()) //mech was thrown
-			return
-		if(istype(obstacle, /obj))
-			var/obj/O = obstacle
-			if(!O.anchored)
-				step(obstacle, dir)
-		else if(istype(obstacle, /mob))
-			step(obstacle, dir)
-
-// By this point, our loc is the turf we moved onto, oldloc is the turf we came from
-// Could be useful for on move stuff, like trampling, leaving a trail of fire.
-/obj/driveable/frame/Moved(atom/oldloc, direction)
-	. = ..()
-
-/obj/driveable/frame/proc/delay_next_move(delay)
-	if(delay)
-		next_move = world.time + delay
 
 /obj/driveable/frame/basic/MouseDrop_T(atom/dropping, mob/user)
 	if((user != dropping) || !user.canUseTopic(src, TRUE))
@@ -92,23 +52,6 @@
 			if(can_enter(user, passenger))
 				enter(user, passenger)
 
-/obj/driveable/frame/basic/remove_air(amount)
-	if(body && body.is_sealed && body.using_internal_tank)
-		. = body.remove_air(amount)
-		if(!. && driver && (world.time > next_air_warning))
-			driver << "<span class='userdanger'>Your cabin's air tank has no more air! You will suffocate if you don't do something!</span>"
-			next_air_warning = world.time + air_warning_delay
-	else
-		. = ..()
-
-/obj/driveable/frame/basic/return_air()
-	if(body && body.is_sealed && body.using_internal_tank)
-		. = body.return_air()
-		if(!. && driver && (world.time > next_air_warning))
-			driver << "<span class='userdanger'>There's no air tank to breathe from! You will suffocate if you don't do something!</span>"
-			next_air_warning = world.time + air_warning_delay
-	else
-		. = ..()
 
 /obj/driveable/frame/basic/proc/can_enter(mob/user, passenger = FALSE)
 	return TRUE
@@ -128,6 +71,7 @@
 		return FALSE
 	. = body.can_enter(user, passenger)
 
+
 // Unsafe, use can_enter(mob, is_passenger) before this
 /obj/driveable/frame/basic/proc/enter(mob/M, passenger = FALSE)
 	// If we are going for the driver seat, handle it here
@@ -140,6 +84,7 @@
 /obj/driveable/frame/basic/proc/can_eject(mob/user)
 	return TRUE
 
+
 // Unsafe, use can_eject(mob) before this
 /obj/driveable/frame/basic/proc/eject(mob/M)
 	var/passenger = TRUE
@@ -151,24 +96,6 @@
 		RemoveActions(M)
 	body.on_eject(M, passenger)
 
-// Driveable frame-level can_move checks
-/obj/driveable/frame/basic/proc/can_move()
-	return TRUE
-	//
-	//
-	if(!driver)
-		return FALSE
-	if(next_move > world.time)
-		return FALSE
-	if(driver.incapacitated())
-		driver << "<span class='warning'>Cannot drive while incapacitated.</span>"
-		return FALSE
-	if(!legs)
-		driver << "<span class='warning'>The [name] does not have any means of locomotion!</span>"
-		return FALSE
-
-/obj/driveable/frame/basic/proc/can_turn()
-	return TRUE
 
 // body and legs can be installed without having the other. Arms/head requires body to be installed.
 /obj/driveable/frame/basic/attempt_construction(obj/item/component/component, mob/user)
@@ -222,6 +149,7 @@
 		user << "<span class='warning'>The [component.name] seems to be stuck to your hand!</span>"
 		return FALSE
 
+
 /obj/driveable/frame/basic/proc/install_component(obj/item/component/component, mob/user)
 	switch(component.component_type)
 		if(COMPONENT_BODY)
@@ -240,6 +168,7 @@
 	on_component_install(component, user)
 	add_component_overlay(component)
 
+
 /obj/driveable/frame/basic/proc/remove_component(obj/item/component/component, mob/user)
 	if(component == body)
 		body = null
@@ -256,6 +185,7 @@
 	on_component_remove(component, user)
 	remove_component_overlay(component)
 
+
 /obj/driveable/frame/basic/proc/add_component_overlay(obj/item/component/component)
 	if(component.is_overlay_immutable)
 		if(!component.component_image) // immutables need only to be constructed once
@@ -271,10 +201,12 @@
 			overlays += arm_obj.component_image
 			update_mutable_overlays()
 
+
 /obj/driveable/frame/basic/proc/remove_component_overlay(obj/item/component/component)
 	overlays -= component.component_image
 	if(component.component_type == COMPONENT_ARM)
 		underlays -= component.component_image
+
 
 /obj/driveable/frame/basic/proc/update_mutable_overlays()
 	switch(dir)
@@ -297,6 +229,7 @@
 				underlays -= l_arm.component_image
 				overlays += l_arm.component_image
 
+
 // Make frame invisible if we have both body and legs
 /obj/driveable/frame/basic/proc/on_component_install(obj/item/component/component, mob/user)
 	if(component.component_actions && component.component_actions.len)
@@ -309,6 +242,7 @@
 		anchored = 1
 		driveable_complete = TRUE
 
+
 /obj/driveable/frame/basic/proc/on_component_remove(obj/item/component/component, mob/user)
 	if(component_actions && component_actions[component])
 		LAZYREMOVE(component_actions, component)
@@ -318,3 +252,23 @@
 		icon_state = initial(icon_state)
 		anchored = 0
 		driveable_complete = FALSE
+
+
+/obj/driveable/frame/basic/remove_air(amount)
+	if(body && body.is_sealed && body.using_internal_tank)
+		. = body.remove_air(amount)
+		if(!. && driver && (world.time > next_air_warning))
+			driver << "<span class='userdanger'>Your cabin's air tank has no more air! You will suffocate if you don't do something!</span>"
+			next_air_warning = world.time + air_warning_delay
+	else
+		. = ..()
+
+
+/obj/driveable/frame/basic/return_air()
+	if(body && body.is_sealed && body.using_internal_tank)
+		. = body.return_air()
+		if(!. && driver && (world.time > next_air_warning))
+			driver << "<span class='userdanger'>There's no air tank to breathe from! You will suffocate if you don't do something!</span>"
+			next_air_warning = world.time + air_warning_delay
+	else
+		. = ..()
